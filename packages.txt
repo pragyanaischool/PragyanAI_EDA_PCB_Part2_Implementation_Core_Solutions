@@ -1,6 +1,7 @@
 build-essential
 cmake
 kicad
+kicad-symbols
 ngspice
 libngspice0
 jq
