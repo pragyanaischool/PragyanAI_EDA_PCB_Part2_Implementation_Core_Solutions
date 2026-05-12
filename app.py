@@ -23,11 +23,11 @@ try:
 except FileNotFoundError:
     st.sidebar.warning("Logo not found at assets/PragyanAI_Transperent.png")
 
-st.sidebar.title("🛠️ Implementation Core")
+st.sidebar.title(" Implementation Core")
 st.sidebar.info("Element 2: Automated EDA Synthesis")
 
 # --- 🚀 MAIN UI ---
-st.image(""PragyanAI_Transperent.png")
+st.image("PragyanAI_Transperent.png")
 st.title("PragyanAI: Hardware Synthesis Factory")
 st.markdown("""
 This module translates **AI-Architected Plans** into **Physical Engineering Artifacts**.
