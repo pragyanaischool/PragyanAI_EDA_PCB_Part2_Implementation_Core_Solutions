@@ -1,0 +1,7 @@
+Designator,Quantity,Value,MPN,Footprint,Description,Manufacturer
+U1,1,ESP32-S3-WROOM-1,ESP32-S3-WROOM-1-N16R8,RF_Module:ESP32-S3-WROOM-1-N8,"Dual-core Xtensa LX7 MCU, Wi-Fi & BT 5.0, 16MB Flash",Espressif Systems
+U2,1,AMS1117-3.3,AMS1117-3.3,Package_TO_SOT_SMD:SOT-223-3_TabPin2,"1A Low Dropout Voltage Regulator, 3.3V Fixed Output",Advanced Monolithic Systems
+C1,1,10uF,CL21A106KAYNNNE,Capacitor_SMD:C_0603_1608Metric,"Ceramic Capacitor, 10uF, 25V, X5R, 0603",Samsung Electro-Mechanics
+C2,1,1uF,CL21B105KAFNNNE,Capacitor_SMD:C_0603_1608Metric,"Ceramic Capacitor, 1uF, 25V, X7R, 0603",Samsung Electro-Mechanics
+R1,1,10k,RC0603FR-0710KL,Resistor_SMD:R_0603_1608Metric,"Chip Resistor, 10k Ohm, 1/10W, 1%, 0603",Yageo
+J1,1,Barrel_Jack,PJ-002A,Connector_BarrelJack:BarrelJack_Horizontal,"DC Power Jack, 2.1mm ID, 5.5mm OD, Through Hole",CUI Devices
