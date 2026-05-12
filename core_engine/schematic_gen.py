@@ -1,27 +1,26 @@
 import sys
 import os
 import logging
-from skidl import Net, generate_netlist, KICAD, set_default_tool, Part, config, load_peripheral_libraries
+# lib_search_paths is the modern way to manage library locations
+from skidl import Net, generate_netlist, KICAD, set_default_tool, Part, config, lib_search_paths
 
 # --- 1. PATH STABILIZATION ---
 # Ensures the root directory is accessible for module imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # --- 2. KICAD CLOUD INFRASTRUCTURE CONFIG ---
-# Points to the system KiCad symbols on the Streamlit Linux server
+# Target the standard Linux KiCad symbols folder
 kicad_sym_path = '/usr/share/kicad/symbols/'
 
 if os.path.exists(kicad_sym_path):
-    # Add path to the search list
-    config.lib_search_paths[KICAD].append(kicad_sym_path)
-    try:
-        # CRITICAL FIX: Explicitly load/index the libraries into memory
-        # This resolves: "Can't make a part without a library & part name"
-        load_peripheral_libraries()
-        logging.info("Hardware Libraries (Connector, Device, MCU) indexed successfully.")
-    except Exception as e:
-        logging.warning(f"Library indexing issue: {e}")
+    # Add path directly to the SKiDL library search paths
+    if kicad_sym_path not in lib_search_paths[KICAD]:
+        lib_search_paths[KICAD].append(kicad_sym_path)
+    logging.info(f"KiCad symbol path indexed: {kicad_sym_path}")
+else:
+    logging.warning("KiCad symbols folder not found. Check packages.txt for 'kicad'.")
 
+# Standard PragyanAI Symbol Macros
 from libraries.pragyan_symbols import (
     PowerStage_LDO_3V3, 
     ESP32_Minimal_System, 
@@ -35,7 +34,7 @@ set_default_tool(KICAD)
 class SchematicGenerator:
     def __init__(self, project_name="PragyanAI_Design"):
         """
-        Initializes the generator with global nets.
+        Initializes the generator with global power and ground nets.
         """
         self.project_name = project_name
         self.gnd = Net('GND')
@@ -43,29 +42,31 @@ class SchematicGenerator:
 
     def _safe_connect(self, part, net, aliases):
         """
-        Heuristic Connection Helper:
-        Checks for pin existence before wiring to prevent NoneType crashes.
+        Heuristic Connection Logic:
+        Safeguards against NoneType errors by verifying pin existence 
+        before wiring, supporting cross-library compatibility.
         """
         for alias in aliases:
             try:
+                # SKiDL returns None if the pin name/number isn't in the symbol
                 if part[alias] is not None:
                     part[alias] += net
-                    logger.info(f"Mapped {net.name} -> {part.name} pin {alias}")
+                    logger.info(f"Mapped {net.name} -> {part.name} (Pin: {alias})")
                     return True
             except (KeyError, AttributeError, TypeError):
                 continue
-        logger.warning(f"Pin Mapping Alert: {net.name} could not be connected to {part.name}")
+        
+        logger.warning(f"Pin Mapping Alert: {net.name} skipped for {part.name}")
         return False
 
     def build_from_plan(self, plan, mapped_data):
         """
-        Synthesizes the electrical architecture using Heuristic Pin Mapping.
+        Executes the synthesis of the hardware architecture.
         """
         try:
             logger.info(f"Starting Implementation Core Synthesis: {self.project_name}")
             
             # 1. CORE POWER & PROCESSING
-            # Generates the 3.3V rail and the ESP32-S3 subsystem
             v33, ldo_reg = PowerStage_LDO_3V3(self.v_in, self.gnd)
             mcu = ESP32_Minimal_System(v33, self.gnd)
             
@@ -76,15 +77,14 @@ class SchematicGenerator:
                 sda = Net('SDA')
                 scl = Net('SCL')
                 
-                # Dynamic Pin Mapping for ESP32-S3 (Pins 4 & 5 are standard for SDA/SCL)
+                # Dynamic Pin Mapping for ESP32-S3 (Standard pins 4 & 5)
                 self._safe_connect(mcu, sda, ['GPIO1', 'IO1', 'G1', 4, 'SDA'])
                 self._safe_connect(mcu, scl, ['GPIO2', 'IO2', 'G2', 5, 'SCL'])
                 
-                # Add bus pull-ups for electrical stability
+                # Apply pull-up resistors to the bus
                 I2C_Pullups(sda, scl, v33)
                 
-            # 3. STATUS INDICATORS
-            # Visual feedback for power-on state
+            # 3. GLOBAL STATUS INDICATORS
             Status_LED(v33, self.gnd, color="GREEN")
             
             return True
@@ -95,20 +95,20 @@ class SchematicGenerator:
 
     def generate_netlist(self, output_path):
         """
-        Exports the in-memory circuit to a physical .net file.
+        Exports the synthesized circuit to a physical .net file.
         """
         try:
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             generate_netlist(file_name=output_path)
-            logger.info(f"Synthesis Artifact Created: {output_path}")
+            logger.info(f"Netlist artifact created: {output_path}")
             return True
         except Exception as e:
             logger.error(f"Artifact generation failed: {str(e)}")
             raise e
 
 if __name__ == "__main__":
-    # Internal Unit Test
-    gen = SchematicGenerator(project_name="Cloud_Live_Build")
-    test_data = {"interfaces": {"Bus": "I2C"}}
+    # Test harness
+    gen = SchematicGenerator(project_name="Unit_Test_Build")
+    test_data = {"interfaces": {"Sensor": "I2C"}}
     if gen.build_from_plan({}, test_data):
-        gen.generate_netlist("outputs/netlists/synthesis_complete.net")
+        gen.generate_netlist("outputs/netlists/test.net")
