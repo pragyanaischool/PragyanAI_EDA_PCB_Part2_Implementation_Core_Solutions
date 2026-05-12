@@ -25,45 +25,37 @@ def _get_pin_safely(part, identifiers):
     return None
 
 def PowerStage_LDO_3V3(vin_net, gnd_net):
-    """
-    Macro: Standard 3.3V LDO Stage.
-    AMS1117-3.3 standard pinout: 1=GND, 2=VOUT, 3=VIN.
-    """
     v33 = Net('3V3')
-    reg = None
     
-    # 1. Discovery Phase
+    # --- 1. ROBUST REGULATOR LOAD ---
+    reg = None
     try:
-        results = search('AMS1117-3.3')
-        if results:
-            reg = Part(None, results[0], footprint='Package_TO_SOT_SMD:SOT-223-3_TabPin2')
-    except Exception: 
-        pass
-
-    # 2. Dynamic Fallback Phase
-    if reg is None:
+        # We use a string literal directly to avoid search() returning []
+        reg = Part('Regulator_Linear', 'AMS1117-3.3', footprint='Package_TO_SOT_SMD:SOT-223-3_TabPin2')
+    except:
+        # If the library 'Regulator_Linear' isn't found, define it in memory
         reg = Part(name='AMS1117_REG', dest=KICAD, pins=[
             Pin(num='1', name='GND'), Pin(num='2', name='VOUT'), Pin(num='3', name='VIN')
         ])
         reg.footprint = 'Package_TO_SOT_SMD:SOT-223-3_TabPin2'
 
-    # 3. Wiring Phase (Fixed Syntax: Variable Assignment first)
+    # --- 2. ROBUST PASSIVE LOAD (The likely source of your error) ---
+    # We define these manually to ensure 'Part' is never None
+    def create_cap(value):
+        c = Part(name='C', dest=KICAD, pins=[Pin(num='1'), Pin(num='2')], value=value)
+        c.footprint = 'Capacitor_SMD:C_0603_1608Metric'
+        return c
+
+    c_in = create_cap('10uF')
+    c_out = create_cap('22uF')
+
+    # Wiring logic (using the variable assignment fix from earlier)
     p_vin = _get_pin_safely(reg, [3, '3', 'VIN'])
     if p_vin: p_vin += vin_net
-    
     p_gnd = _get_pin_safely(reg, [1, '1', 'GND'])
     if p_gnd: p_gnd += gnd_net
-    
-    p_vout = _get_pin_safely(reg, [2, '2', 'VOUT', 'VOUT/ADJ'])
+    p_vout = _get_pin_safely(reg, [2, '2', 'VOUT'])
     if p_vout: p_vout += v33
-    
-    # Passive Components
-    try:
-        c_in = Part('Device', 'C', value='10uF', footprint='Capacitor_SMD:C_0603_1608Metric')
-        c_out = Part('Device', 'C', value='22uF', footprint='Capacitor_SMD:C_0603_1608Metric')
-    except Exception:
-        c_in = Part(name='C_IN', dest=KICAD, pins=[Pin(num='1'), Pin(num='2')], footprint='Capacitor_SMD:C_0603_1608Metric')
-        c_out = Part(name='C_OUT', dest=KICAD, pins=[Pin(num='1'), Pin(num='2')], footprint='Capacitor_SMD:C_0603_1608Metric')
 
     c_in[1, 2]  += vin_net, gnd_net
     c_out[1, 2] += v33, gnd_net
