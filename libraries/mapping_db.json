@@ -5,14 +5,24 @@
       "part": "ESP32-S3-WROOM-1",
       "footprint": "RF_Module:ESP32-S3-WROOM-1-N8",
       "mpn": "ESP32-S3-WROOM-1-N16R8",
-      "manufacturer": "Espressif Systems"
+      "manufacturer": "Espressif Systems",
+      "description": "Powerful AI-IoT MCU with Wi-Fi and Bluetooth 5 (LE)"
     },
-    "ESP32-C3": {
+    "ESP32": {
       "library": "MCU_Espressif",
-      "part": "ESP32-C3-WROOM-02",
-      "footprint": "RF_Module:ESP32-C3-WROOM-02",
-      "mpn": "ESP32-C3-WROOM-02-N4",
-      "manufacturer": "Espressif Systems"
+      "part": "ESP32-S3-WROOM-1",
+      "footprint": "RF_Module:ESP32-S3-WROOM-1-N8",
+      "mpn": "ESP32-S3-WROOM-1-N16R8",
+      "manufacturer": "Espressif Systems",
+      "description": "Generic alias mapped to ESP32-S3 for PragyanAI defaults"
+    },
+    "STM32F103": {
+      "library": "MCU_ST_STM32F1",
+      "part": "STM32F103C8Tx",
+      "footprint": "Package_QFP:LQFP-48_7x7mm_P0.5mm",
+      "mpn": "STM32F103C8T6",
+      "manufacturer": "STMicroelectronics",
+      "description": "ARM Cortex-M3 High-performance MCU"
     }
   },
   "regulators": {
@@ -21,30 +31,33 @@
       "part": "AMS1117-3.3",
       "footprint": "Package_TO_SOT_SMD:SOT-223-3_TabPin2",
       "mpn": "AMS1117-3.3",
-      "manufacturer": "Advanced Monolithic Systems"
+      "manufacturer": "Advanced Monolithic Systems",
+      "description": "1A Low Dropout Voltage Regulator, 3.3V Fixed"
     },
     "LM2596-5.0": {
-      "library": "Regulator_Linear",
+      "library": "Regulator_Switching",
       "part": "LM2596S-5.0",
       "footprint": "Package_TO_SOT_SMD:TO-263-5_TabPin3",
-      "mpn": "LM2596S-5.0",
-      "manufacturer": "Texas Instruments"
+      "mpn": "LM2596S-5.0/NOPB",
+      "manufacturer": "Texas Instruments",
+      "description": "SIMPLE SWITCHER 3A Step-Down Voltage Regulator"
     }
   },
   "passives": {
-    "Resistor_0603": {
-      "library": "Device",
-      "part": "R",
-      "footprint": "Resistor_SMD:R_0603_1608Metric",
-      "mpn": "RC0603FR-0710KL",
-      "manufacturer": "Yageo"
-    },
-    "Capacitor_0603": {
+    "C_0603": {
       "library": "Device",
       "part": "C",
       "footprint": "Capacitor_SMD:C_0603_1608Metric",
-      "mpn": "CL21A106KAYNNNE",
-      "manufacturer": "Samsung"
+      "mpn": "CL10A106MQ8NNNC",
+      "manufacturer": "Samsung Electro-Mechanics"
+    },
+    "R_0603": {
+      "library": "Device",
+      "part": "R",
+      "footprint": "Resistor_SMD:R_0603_1608Metric",
+      "mpn": "RC0603FR-074K7L",
+      "manufacturer": "Yageo"
     }
   }
 }
+
