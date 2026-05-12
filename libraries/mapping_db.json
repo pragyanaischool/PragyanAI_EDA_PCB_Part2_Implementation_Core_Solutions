@@ -1,0 +1,50 @@
+{
+  "mcu": {
+    "ESP32-S3": {
+      "library": "MCU_Espressif",
+      "part": "ESP32-S3-WROOM-1",
+      "footprint": "RF_Module:ESP32-S3-WROOM-1-N8",
+      "mpn": "ESP32-S3-WROOM-1-N16R8",
+      "manufacturer": "Espressif Systems"
+    },
+    "ESP32-C3": {
+      "library": "MCU_Espressif",
+      "part": "ESP32-C3-WROOM-02",
+      "footprint": "RF_Module:ESP32-C3-WROOM-02",
+      "mpn": "ESP32-C3-WROOM-02-N4",
+      "manufacturer": "Espressif Systems"
+    }
+  },
+  "regulators": {
+    "AMS1117-3.3": {
+      "library": "Regulator_Linear",
+      "part": "AMS1117-3.3",
+      "footprint": "Package_TO_SOT_SMD:SOT-223-3_TabPin2",
+      "mpn": "AMS1117-3.3",
+      "manufacturer": "Advanced Monolithic Systems"
+    },
+    "LM2596-5.0": {
+      "library": "Regulator_Linear",
+      "part": "LM2596S-5.0",
+      "footprint": "Package_TO_SOT_SMD:TO-263-5_TabPin3",
+      "mpn": "LM2596S-5.0",
+      "manufacturer": "Texas Instruments"
+    }
+  },
+  "passives": {
+    "Resistor_0603": {
+      "library": "Device",
+      "part": "R",
+      "footprint": "Resistor_SMD:R_0603_1608Metric",
+      "mpn": "RC0603FR-0710KL",
+      "manufacturer": "Yageo"
+    },
+    "Capacitor_0603": {
+      "library": "Device",
+      "part": "C",
+      "footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "mpn": "CL21A106KAYNNNE",
+      "manufacturer": "Samsung"
+    }
+  }
+}
