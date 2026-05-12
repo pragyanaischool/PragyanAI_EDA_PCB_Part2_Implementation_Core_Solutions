@@ -6,6 +6,11 @@ from core_engine.schematic_gen import SchematicGenerator
 from core_engine.bom_manager import BOMManager
 from core_engine.footprint_mapper import FootprintMapper
 
+import sys
+
+# Forces the project root into the Python Path
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
 # Initialize logging and console for PragyanAI Studio
 console = Console()
 logging.basicConfig(level=logging.INFO)
