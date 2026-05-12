@@ -5,9 +5,7 @@ import logging
 from skidl import (
     Part,
     Net,
-    search,
     KICAD,
-    Pin,
     lib_search_paths
 )
 
@@ -19,7 +17,8 @@ sys.path.append(
     os.path.abspath(
         os.path.join(
             os.path.dirname(__file__),
-            '..')
+            '..'
+        )
     )
 )
 
@@ -30,10 +29,11 @@ sys.path.append(
 logger = logging.getLogger("PragyanAI-Symbols")
 
 # =========================================================
-# KICAD LIBRARY PATH
+# KICAD LIBRARY CONFIG
 # =========================================================
 
 try:
+
     lib_search_paths[KICAD].append(
         "/usr/share/kicad/symbols"
     )
@@ -44,19 +44,14 @@ except Exception as e:
 
     print(
         f"[WARNING] Could not configure "
-        f"KiCad libraries: {e}"
+        f"KiCad library path: {e}"
     )
 
 # =========================================================
-# SAFE PIN ACCESSOR
+# SAFE PIN ACCESS
 # =========================================================
 
 def _get_pin_safely(part, identifiers):
-    """
-    Safely find a pin by:
-    - number
-    - name
-    """
 
     for identifier in identifiers:
 
@@ -67,12 +62,7 @@ def _get_pin_safely(part, identifiers):
             if pin is not None:
                 return pin
 
-        except (
-            KeyError,
-            IndexError,
-            AttributeError,
-            TypeError
-        ):
+        except Exception:
             continue
 
     return None
@@ -84,103 +74,45 @@ def _get_pin_safely(part, identifiers):
 def safe_part(
     library=None,
     symbol=None,
-    name=None,
     value=None,
-    footprint=None,
-    pins=None
+    footprint=None
 ):
-    """
-    Ultra-safe SKiDL part generator.
-
-    Handles:
-    - library parts
-    - generic parts
-    - missing libraries
-    - invalid definitions
-    """
 
     try:
 
         print(
-            f"[DEBUG] safe_part("
+            f"[DEBUG] "
             f"library={library}, "
-            f"symbol={symbol}, "
-            f"name={name})"
+            f"symbol={symbol}"
         )
 
-        # =====================================================
-        # LIBRARY PART
-        # =====================================================
+        # ---------------------------------------------
+        # VALIDATION
+        # ---------------------------------------------
 
-        if library and symbol:
-
-            logger.info(
-                f"Creating library part: "
-                f"{library}:{symbol}"
+        if not library:
+            raise ValueError(
+                "Missing library name."
             )
 
-            p = Part(
-                library,
-                symbol,
-                footprint=footprint
+        if not symbol:
+            raise ValueError(
+                "Missing symbol name."
             )
 
-        # =====================================================
-        # GENERIC PART
-        # =====================================================
+        # ---------------------------------------------
+        # CREATE PART
+        # ---------------------------------------------
 
-        else:
+        p = Part(
+            library,
+            symbol,
+            footprint=footprint
+        )
 
-            # -----------------------------------------
-            # SAFE DEFAULT NAME
-            # -----------------------------------------
-
-            if not name:
-
-                logger.warning(
-                    "No part name provided. "
-                    "Using GENERIC_PART."
-                )
-
-                name = "GENERIC_PART"
-
-            # -----------------------------------------
-            # SAFE DEFAULT PINS
-            # -----------------------------------------
-
-            if not pins:
-
-                logger.warning(
-                    f"No pins supplied for "
-                    f"{name}. "
-                    f"Creating default 2-pin device."
-                )
-
-                pins = [
-                    Pin(num='1'),
-                    Pin(num='2')
-                ]
-
-            logger.info(
-                f"Creating generic part: {name}"
-            )
-
-            p = Part(
-                name=name,
-                dest=KICAD,
-                pins=pins
-            )
-
-            # -----------------------------------------
-            # FOOTPRINT
-            # -----------------------------------------
-
-            if footprint:
-                p.footprint = footprint
-
-        # =====================================================
+        # ---------------------------------------------
         # OPTIONAL VALUE
-        # =====================================================
+        # ---------------------------------------------
 
         if value:
             p.value = value
@@ -210,7 +142,7 @@ def PowerStage_LDO_3V3(
     v33 = Net('3V3')
 
     # -----------------------------------------------------
-    # AMS1117 REGULATOR
+    # REGULATOR
     # -----------------------------------------------------
 
     try:
@@ -223,7 +155,7 @@ def PowerStage_LDO_3V3(
 
         print(
             "[SKIDL] Loaded AMS1117 "
-            "from KiCad library."
+            "from library."
         )
 
     except Exception as e:
@@ -232,46 +164,34 @@ def PowerStage_LDO_3V3(
             f"[WARNING] AMS1117 load failed: {e}"
         )
 
-        reg = safe_part(
-            name='AMS1117_3V3',
-            footprint='Package_TO_SOT_SMD:SOT-223-3_TabPin2',
-            pins=[
-                Pin(num='1', name='GND'),
-                Pin(num='2', name='VOUT'),
-                Pin(num='3', name='VIN')
-            ]
+        raise RuntimeError(
+            "Failed to load AMS1117 regulator."
         )
 
     # -----------------------------------------------------
-    # INPUT CAP
+    # INPUT CAPACITOR
     # -----------------------------------------------------
 
     c_in = safe_part(
-        name='C_10uF',
+        library='Device',
+        symbol='C',
         value='10uF',
-        footprint='Capacitor_SMD:C_0603_1608Metric',
-        pins=[
-            Pin(num='1'),
-            Pin(num='2')
-        ]
+        footprint='Capacitor_SMD:C_0603_1608Metric'
     )
 
     # -----------------------------------------------------
-    # OUTPUT CAP
+    # OUTPUT CAPACITOR
     # -----------------------------------------------------
 
     c_out = safe_part(
-        name='C_22uF',
+        library='Device',
+        symbol='C',
         value='22uF',
-        footprint='Capacitor_SMD:C_0603_1608Metric',
-        pins=[
-            Pin(num='1'),
-            Pin(num='2')
-        ]
+        footprint='Capacitor_SMD:C_0603_1608Metric'
     )
 
     # -----------------------------------------------------
-    # CONNECTIONS
+    # PIN CONNECTIONS
     # -----------------------------------------------------
 
     p_vin = _get_pin_safely(
@@ -319,12 +239,6 @@ def ESP32_Minimal_System(
     gnd_net
 ):
 
-    mcu = None
-
-    # -----------------------------------------------------
-    # TRY REAL ESP32 SYMBOL
-    # -----------------------------------------------------
-
     try:
 
         mcu = safe_part(
@@ -344,23 +258,8 @@ def ESP32_Minimal_System(
             f"[WARNING] ESP32 load failed: {e}"
         )
 
-        # -------------------------------------------------
-        # FALLBACK GENERIC MCU
-        # -------------------------------------------------
-
-        mcu = safe_part(
-            name='ESP32_CORE_GENERIC',
-            footprint=(
-                'Connector_PinHeader_2.54mm:'
-                'PinHeader_2x20_P2.54mm_Vertical'
-            ),
-            pins=[
-                Pin(
-                    num=str(i),
-                    name=f"GPIO{i}"
-                )
-                for i in range(1, 41)
-            ]
+        raise RuntimeError(
+            "Failed to load ESP32 symbol."
         )
 
     # -----------------------------------------------------
@@ -368,17 +267,14 @@ def ESP32_Minimal_System(
     # -----------------------------------------------------
 
     r_en = safe_part(
-        name='R_10K',
+        library='Device',
+        symbol='R',
         value='10k',
-        footprint='Resistor_SMD:R_0603_1608Metric',
-        pins=[
-            Pin(num='1'),
-            Pin(num='2')
-        ]
+        footprint='Resistor_SMD:R_0603_1608Metric'
     )
 
     # -----------------------------------------------------
-    # POWER
+    # POWER PIN
     # -----------------------------------------------------
 
     p_vcc = _get_pin_safely(
@@ -395,7 +291,7 @@ def ESP32_Minimal_System(
         )
 
     # -----------------------------------------------------
-    # GROUND
+    # GND PIN
     # -----------------------------------------------------
 
     p_gnd = _get_pin_safely(
@@ -423,6 +319,7 @@ def ESP32_Minimal_System(
     if p_en:
 
         p_en += r_en[1]
+
         r_en[2] += v33_net
 
     else:
@@ -445,24 +342,22 @@ def I2C_Pullups(
 ):
 
     r_sda = safe_part(
-        name='R_SDA',
+        library='Device',
+        symbol='R',
         value='4.7k',
-        footprint='Resistor_SMD:R_0603_1608Metric',
-        pins=[
-            Pin(num='1'),
-            Pin(num='2')
-        ]
+        footprint='Resistor_SMD:R_0603_1608Metric'
     )
 
     r_scl = safe_part(
-        name='R_SCL',
+        library='Device',
+        symbol='R',
         value='4.7k',
-        footprint='Resistor_SMD:R_0603_1608Metric',
-        pins=[
-            Pin(num='1'),
-            Pin(num='2')
-        ]
+        footprint='Resistor_SMD:R_0603_1608Metric'
     )
+
+    # -----------------------------------------------------
+    # CONNECTIONS
+    # -----------------------------------------------------
 
     r_sda[1] += sda_net
     r_sda[2] += vcc_net
@@ -483,22 +378,16 @@ def Status_LED(
 ):
 
     led = safe_part(
-        name='LED_PWR',
-        footprint='LED_SMD:LED_0603_1608Metric',
-        pins=[
-            Pin(num='1', name='K'),
-            Pin(num='2', name='A')
-        ]
+        library='Device',
+        symbol='LED',
+        footprint='LED_SMD:LED_0603_1608Metric'
     )
 
     res = safe_part(
-        name='R_LED',
+        library='Device',
+        symbol='R',
         value='330',
-        footprint='Resistor_SMD:R_0603_1608Metric',
-        pins=[
-            Pin(num='1'),
-            Pin(num='2')
-        ]
+        footprint='Resistor_SMD:R_0603_1608Metric'
     )
 
     # -----------------------------------------------------
@@ -512,20 +401,3 @@ def Status_LED(
     led[1] += gnd_net
 
     return led, res
-
-# =========================================================
-# DEFAULT GENERIC 2-PIN DEVICE
-# =========================================================
-
-def default_two_pin(
-    name="GENERIC_2PIN"
-):
-
-    return safe_part(
-        name=name,
-        pins=[
-            Pin(num='1'),
-            Pin(num='2')
-        ]
-    )
-    
