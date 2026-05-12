@@ -15,7 +15,8 @@ jsonschema==4.21.1
 
 # --- Hardware Implementation (Element 2) ---
 skidl==1.2.1
-kinpart==1.2.0
+#kinpart==1.2.0
+Pillow==10.2.0
 pandas==2.2.1
 openpyxl==3.1.2
 
