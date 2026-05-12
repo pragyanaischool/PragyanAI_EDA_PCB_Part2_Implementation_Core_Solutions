@@ -24,5 +24,5 @@ openpyxl==3.1.2
 # Prevents Python 3.14+ version mismatch errors
 torch==2.2.1
 torchvision==0.17.1
-transformers==4.38.2
+transformers>=4.40.0
 sentence-transformers==2.5.1
