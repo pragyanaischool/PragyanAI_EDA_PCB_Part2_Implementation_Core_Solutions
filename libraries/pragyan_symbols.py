@@ -1,31 +1,33 @@
 import sys
 import os
+import logging
 from skidl import Part, Net
 
 # --- PATH INJECTION ---
-# Ensures that when imported from core_engine/, the root directory is visible
+# Ensures root is in path so this can be imported by core_engine/ scripts
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+logger = logging.getLogger("PragyanAI-Symbols")
 
 """
 PragyanAI Symbol Macros
-These functions serve as 'Templates' for common electronic sub-circuits.
-Note: 'Package' is removed to maintain compatibility with modern SKiDL 1.2.1+
+These functions encapsulate common sub-circuits to ensure consistency 
+and reuse across different hardware designs.
 """
 
 def PowerStage_LDO_3V3(vin_net, gnd_net):
     """
-    Macro: Standard 3.3V LDO Stage
-    Includes: AMS1117-3.3, 10uF Input Cap, 22uF Output Cap.
+    Macro: Standard 3.3V LDO Stage.
+    Includes: AMS1117-3.3 and necessary decoupling capacitors.
     """
     v33 = Net('3V3')
     
-    # Instantiate Parts (Footprints passed directly to Part constructor)
+    # Instantiate Parts
     reg = Part('Regulator_Linear', 'AMS1117-3.3', footprint='Package_TO_SOT_SMD:SOT-223-3_TabPin2')
     c_in = Part('Device', 'C', value='10uF', footprint='Capacitor_SMD:C_0603_1608Metric')
     c_out = Part('Device', 'C', value='22uF', footprint='Capacitor_SMD:C_0603_1608Metric')
     
-    # Wiring Logic
-    # In SKiDL, pin numbers or names can be used. AMS1117: 3=In, 2=Out, 1=GND
+    # Wiring Logic: AMS1117 pins (1:GND, 2:OUT, 3:IN)
     reg[3, 1] += vin_net, gnd_net
     reg[2]    += v33
     
@@ -36,12 +38,27 @@ def PowerStage_LDO_3V3(vin_net, gnd_net):
 
 def ESP32_Minimal_System(v33_net, gnd_net):
     """
-    Macro: Essential Support for ESP32-S3
-    Includes: Pull-up on EN pin and power decoupling.
+    Macro: Essential Support for ESP32-S3.
+    Uses a variant-search loop to handle different KiCad library naming conventions.
     """
-    # Instantiate MCU
-    mcu = Part('MCU_Espressif', 'ESP32-S3-WROOM-1', footprint='RF_Module:ESP32-S3-WROOM-1-N8')
+    mcu = None
+    # List of common naming variants found in various KiCad versions
+    variants = ['ESP32-S3-WROOM-1-N8', 'ESP32-S3-WROOM-1', 'ESP32-S3-WROOM-1-N16']
     
+    for variant in variants:
+        try:
+            mcu = Part('MCU_Espressif', variant, footprint='RF_Module:ESP32-S3-WROOM-1-N8')
+            if mcu:
+                logger.info(f"Successfully matched MCU variant: {variant}")
+                break
+        except Exception:
+            continue
+            
+    if not mcu:
+        # Final attempt: force load using the most standard name
+        logger.warning("Preferred variants not found. Attempting generic load.")
+        mcu = Part('MCU_Espressif', 'ESP32-S3-WROOM-1-N8', footprint='RF_Module:ESP32-S3-WROOM-1-N8')
+
     # Standard Decoupling Cap for VCC
     c_dec = Part('Device', 'C', value='0.1uF', footprint='Capacitor_SMD:C_0603_1608Metric')
     
@@ -50,7 +67,7 @@ def ESP32_Minimal_System(v33_net, gnd_net):
     mcu['GND'] += gnd_net
     c_dec[1, 2] += v33_net, gnd_net
     
-    # Enable Pin (EN) must be high for the chip to run
+    # Enable Pin (EN) must be high. Using 10k Pull-up.
     r_en = Part('Device', 'R', value='10k', footprint='Resistor_SMD:R_0603_1608Metric')
     mcu['EN'] += r_en[1]
     r_en[2]   += v33_net
@@ -79,4 +96,5 @@ def Status_LED(signal_net, gnd_net, color="RED"):
     led[2]     += gnd_net # Cathode
     
     return led, res
+    
     
