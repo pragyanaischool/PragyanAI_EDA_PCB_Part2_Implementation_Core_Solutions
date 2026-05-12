@@ -3,7 +3,7 @@ import os
 import logging
 # lib_search_paths is the modern, robust way to manage library locations
 from skidl import Net, generate_netlist, KICAD, set_default_tool, Part, config, lib_search_paths
-
+import skidl
 if hasattr(skidl, 'config'):
     skidl.config.query_thread_safe = True 
 # Note: In some versions of SKiDL, you may also need to bypass the cache:
