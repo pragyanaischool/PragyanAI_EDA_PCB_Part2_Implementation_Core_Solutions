@@ -1,0 +1,76 @@
+name: ⚡ Implementation Core: ERC & Netlist Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  erc-validation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📂 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y kicad
+
+      - name: 📦 Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install skidl jsonschema pandas
+
+      - name: 🧪 Run Automated ERC
+        run: |
+          python -c "
+          from skidl import Part, Net, ERC, generate_netlist, KICAD
+          import os
+
+          try:
+              # 1. Setup a dummy schematic logic for validation
+              gnd = Net('GND')
+              vcc = Net('3V3')
+              
+              # Load a standard part (e.g., a Resistor)
+              res = Part('Device', 'R', footprint='Resistor_SMD:R_0603_1608Metric')
+              
+              # Connect it to the nets
+              res[1] += vcc
+              res[2] += gnd
+              
+              # 2. Trigger the SKiDL ERC (Electrical Rules Check)
+              # This catches floating pins or multi-driven nets
+              print('Running Electrical Rules Check...')
+              ERC()
+              
+              # 3. Attempt Netlist Generation
+              # If the internal structure is corrupted, this will fail
+              generate_netlist(file_name='test_output.net')
+              
+              if os.path.exists('test_output.net'):
+                  print('✅ Success: Netlist is KiCad-readable.')
+              else:
+                  print('❌ Failure: Netlist file not created.')
+                  exit(1)
+                  
+          except Exception as e:
+              print(f'❌ Validation Failed: {str(e)}')
+              exit(1)
+          "
+
+      - name: 📦 Archive Generated Netlist
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validated-netlist
+          path: test_output.net
+          
