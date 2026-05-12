@@ -3,12 +3,12 @@ import os
 import logging
 from skidl import Net, generate_netlist, KICAD, set_default_tool, Part, config
 
-# --- 1. PATH STABILIZATION ---
-# Ensures root directory is accessible for importing from 'libraries'
+# --- 1. PATH INJECTION ---
+# Ensures the engine can locate the 'libraries' folder in the Streamlit environment
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# --- 2. KICAD ENVIRONMENT CONFIG ---
-# Directs SKiDL to the system KiCad symbols folder on Streamlit/Linux
+# --- 2. CLOUD ENVIRONMENT CONFIG ---
+# Points to the system KiCad symbols on the Streamlit Linux server
 kicad_sym_path = '/usr/share/kicad/symbols/'
 if os.path.exists(kicad_sym_path):
     config.lib_search_paths[KICAD].append(kicad_sym_path)
@@ -22,13 +22,13 @@ from libraries.pragyan_symbols import (
 
 logger = logging.getLogger("PragyanAI-SchematicGen")
 
-# Force SKiDL to output KiCad-compatible netlists
+# Set default CAD tool to KiCad
 set_default_tool(KICAD)
 
 class SchematicGenerator:
     def __init__(self, project_name="PragyanAI_Design"):
         """
-        Initializes the generator with standard global nets.
+        Initializes the generator with core power and ground nets.
         """
         self.project_name = project_name
         self.gnd = Net('GND')
@@ -36,80 +36,80 @@ class SchematicGenerator:
 
     def _safe_connect(self, part, net, aliases):
         """
-        Helper: Attempts to connect a net to a part using a list of possible aliases.
-        Prevents NoneType errors by checking pin availability before wiring.
+        Heuristic Connection Logic:
+        Prevents NoneType errors by checking if a pin exists (by name or index)
+        before attempting to wire it.
         """
         for alias in aliases:
             try:
-                # Check if the symbol actually contains this pin
+                # SKiDL returns None if the pin doesn't exist; this check is critical
                 if part[alias] is not None:
                     part[alias] += net
-                    logger.info(f"Successfully mapped {net.name} to pin: {alias}")
+                    logger.info(f"Successfully mapped {net.name} to {part.name} pin: {alias}")
                     return True
             except (KeyError, AttributeError, TypeError):
                 continue
         
-        logger.warning(f"Pin Mapping Alert: Could not find any of {aliases} for net {net.name}")
+        logger.warning(f"Heuristic Alert: Could not map {net.name} to any aliases in {part.name}")
         return False
 
     def build_from_plan(self, plan, mapped_data):
         """
-        Synthesizes the physical circuit layout using heuristic mapping.
+        Executes the synthesis of the hardware architecture.
         """
         try:
-            logger.info(f"Starting Implementation Core Synthesis: {self.project_name}")
+            logger.info(f"Synthesizing PragyanAI Implementation Core: {self.project_name}")
             
-            # 1. GENERATE CORE SUBSYSTEMS
-            # Build the 3.3V power rail and the MCU system
+            # 1. CORE POWER & PROCESSING
+            # Generate 3.3V Rail and MCU Core
             v33, ldo_reg = PowerStage_LDO_3V3(self.v_in, self.gnd)
             mcu = ESP32_Minimal_System(v33, self.gnd)
             
-            # 2. PERIPHERAL BUS SYNTHESIS
+            # 2. PERIPHERAL INTERFACES
             interfaces = mapped_data.get("interfaces", {})
             
-            # If the AI Architecture requires an I2C bus
+            # If the design requires I2C (e.g., for sensors)
             if "I2C" in interfaces.values():
                 sda = Net('SDA')
                 scl = Net('SCL')
                 
-                # Heuristic Pin Mapping for I2C (ESP32-S3 common pins)
-                # We try logical names, vendor labels, and physical pin indices
+                # Apply Heuristic Mapping: Try logical names, IO names, and Pin numbers
+                # Standard ESP32-S3 pins: SDA is GPIO1 (Pin 4), SCL is GPIO2 (Pin 5)
                 self._safe_connect(mcu, sda, ['GPIO1', 'IO1', 'G1', 4, 'SDA'])
                 self._safe_connect(mcu, scl, ['GPIO2', 'IO2', 'G2', 5, 'SCL'])
                 
-                # Add pull-up resistors to ensure bus stability
+                # Connect pull-up resistors for the I2C bus
                 I2C_Pullups(sda, scl, v33)
                 
-            # 3. GLOBAL STATUS HARDWARE
-            # Active-high Power LED tied to the 3.3V rail
+            # 3. VISUAL STATUS INDICATORS
+            # Add a power-on LED (Active High)
             Status_LED(v33, self.gnd, color="GREEN")
             
             return True
 
         except Exception as e:
-            logger.error(f"Synthesis CRITICAL FAILURE: {str(e)}")
+            logger.error(f"Synthesis Failure: {str(e)}")
             raise e
 
     def generate_netlist(self, output_path):
         """
-        Exports the synthesized in-memory circuit to a physical .net file.
+        Exports the in-memory circuit to a physical .net file.
         """
         try:
-            # Create output directory if it doesn't exist (prevents OS errors)
+            # Create output directory path if it doesn't exist
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             
-            # SKiDL global generation call
+            # Generate the KiCad netlist
             generate_netlist(file_name=output_path)
-            logger.info(f"Netlist artifact generated successfully at: {output_path}")
+            logger.info(f"Netlist artifact generated at: {output_path}")
             return True
         except Exception as e:
-            logger.error(f"Artifact generation failed: {str(e)}")
+            logger.error(f"Netlist generation failed: {str(e)}")
             raise e
 
 if __name__ == "__main__":
-    # Test harness for local validation
-    test_mapped = {"interfaces": {"Sensor": "I2C"}}
-    gen = SchematicGenerator(project_name="Unit_Test_Build")
-    if gen.build_from_plan({}, test_mapped):
-        gen.generate_netlist("outputs/netlists/test_output.net")
-        
+    # Internal Unit Test
+    test_gen = SchematicGenerator(project_name="Cloud_Validation_Build")
+    mock_mapped = {"interfaces": {"Sensor": "I2C"}}
+    if test_gen.build_from_plan({}, mock_mapped):
+        test_gen.generate_netlist("outputs/netlists/cloud_test.net")
