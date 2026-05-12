@@ -4,6 +4,11 @@ import json
 from PIL import Image
 from main_worker import ImplementationWorker
 
+import sys
+
+# Forces the project root into the Python Path
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
 # --- 🎨 BRANDING & CONFIG ---
 st.set_page_config(
     page_title="PragyanAI Venture Studio | Implementation Core",
