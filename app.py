@@ -27,7 +27,8 @@ st.sidebar.title("🛠️ Implementation Core")
 st.sidebar.info("Element 2: Automated EDA Synthesis")
 
 # --- 🚀 MAIN UI ---
-st.title("⚡ PragyanAI: Hardware Synthesis Factory")
+st.image(""PragyanAI_Transperent.png")
+st.title("PragyanAI: Hardware Synthesis Factory")
 st.markdown("""
 This module translates **AI-Architected Plans** into **Physical Engineering Artifacts**.
 It generates KiCad-compatible netlists and procurement-ready BOMs.
