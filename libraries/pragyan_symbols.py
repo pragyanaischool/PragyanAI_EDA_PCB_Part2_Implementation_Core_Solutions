@@ -1,7 +1,7 @@
 import sys
 import os
 import logging
-from skidl import Part, Net
+from skidl import Part, Net, search  # 'search' is the key for dynamic discovery
 
 # --- PATH INJECTION ---
 # Ensures root is in path so this can be imported by core_engine/ scripts
@@ -11,14 +11,12 @@ logger = logging.getLogger("PragyanAI-Symbols")
 
 """
 PragyanAI Symbol Macros
-These functions encapsulate common sub-circuits to ensure consistency 
-and reuse across different hardware designs.
+Refined for cloud-deployment with Dynamic Discovery logic.
 """
 
 def PowerStage_LDO_3V3(vin_net, gnd_net):
     """
     Macro: Standard 3.3V LDO Stage.
-    Includes: AMS1117-3.3 and necessary decoupling capacitors.
     """
     v33 = Net('3V3')
     
@@ -27,10 +25,9 @@ def PowerStage_LDO_3V3(vin_net, gnd_net):
     c_in = Part('Device', 'C', value='10uF', footprint='Capacitor_SMD:C_0603_1608Metric')
     c_out = Part('Device', 'C', value='22uF', footprint='Capacitor_SMD:C_0603_1608Metric')
     
-    # Wiring Logic: AMS1117 pins (1:GND, 2:OUT, 3:IN)
+    # Wiring Logic
     reg[3, 1] += vin_net, gnd_net
     reg[2]    += v33
-    
     c_in[1, 2]  += vin_net, gnd_net
     c_out[1, 2] += v33, gnd_net
     
@@ -39,27 +36,31 @@ def PowerStage_LDO_3V3(vin_net, gnd_net):
 def ESP32_Minimal_System(v33_net, gnd_net):
     """
     Macro: Essential Support for ESP32-S3.
-    Uses a variant-search loop to handle different KiCad library naming conventions.
+    Uses 'search' to find the actual part name on the server's library.
     """
     mcu = None
-    # List of common naming variants found in various KiCad versions
-    variants = ['ESP32-S3-WROOM-1-N8', 'ESP32-S3-WROOM-1', 'ESP32-S3-WROOM-1-N16']
+    lib = 'MCU_Espressif'
     
-    for variant in variants:
-        try:
-            mcu = Part('MCU_Espressif', variant, footprint='RF_Module:ESP32-S3-WROOM-1-N8')
-            if mcu:
-                logger.info(f"Successfully matched MCU variant: {variant}")
-                break
-        except Exception:
-            continue
+    try:
+        # 1. Search the library for the most appropriate S3 variant
+        matches = search(lib, 'ESP32-S3-WROOM')
+        
+        if matches:
+            # Pick the first match found in the library
+            target_name = matches[0]
+            logger.info(f"Dynamic Discovery matched: {target_name}")
+            mcu = Part(lib, target_name, footprint='RF_Module:ESP32-S3-WROOM-1-N8')
+        else:
+            # 2. Fallback to older ESP32 if S3 is missing from server's version
+            logger.warning("No S3 variant found. Falling back to ESP32-WROOM-32.")
+            mcu = Part(lib, 'ESP32-WROOM-32', footprint='RF_Module:ESP32-WROOM-32')
             
-    if not mcu:
-        # Final attempt: force load using the most standard name
-        logger.warning("Preferred variants not found. Attempting generic load.")
-        mcu = Part('MCU_Espressif', 'ESP32-S3-WROOM-1-N8', footprint='RF_Module:ESP32-S3-WROOM-1-N8')
+    except Exception as e:
+        logger.error(f"Symbol Discovery Error: {e}")
+        # 3. Hard-coded safety fallback
+        mcu = Part(lib, 'ESP32-WROOM-32', footprint='RF_Module:ESP32-WROOM-32')
 
-    # Standard Decoupling Cap for VCC
+    # Standard Supporting Passives
     c_dec = Part('Device', 'C', value='0.1uF', footprint='Capacitor_SMD:C_0603_1608Metric')
     
     # Wiring Power
@@ -67,15 +68,21 @@ def ESP32_Minimal_System(v33_net, gnd_net):
     mcu['GND'] += gnd_net
     c_dec[1, 2] += v33_net, gnd_net
     
-    # Enable Pin (EN) must be high. Using 10k Pull-up.
+    # Enable Pin (EN) pull-up
     r_en = Part('Device', 'R', value='10k', footprint='Resistor_SMD:R_0603_1608Metric')
-    mcu['EN'] += r_en[1]
-    r_en[2]   += v33_net
+    
+    # Robust Pin Access: Try name 'EN', fallback to pin index 3 (standard for ESP32)
+    try:
+        mcu['EN'] += r_en[1]
+    except:
+        mcu[3] += r_en[1]
+        
+    r_en[2] += v33_net
     
     return mcu
 
 def I2C_Pullups(sda_net, scl_net, vcc_net):
-    """Macro: Standard 4.7k Pull-up resistors for I2C Bus signals."""
+    """Macro: Standard 4.7k Pull-up resistors for I2C Bus."""
     r_sda = Part('Device', 'R', value='4.7k', footprint='Resistor_SMD:R_0603_1608Metric')
     r_scl = Part('Device', 'R', value='4.7k', footprint='Resistor_SMD:R_0603_1608Metric')
     
@@ -87,13 +94,13 @@ def I2C_Pullups(sda_net, scl_net, vcc_net):
     return r_sda, r_scl
 
 def Status_LED(signal_net, gnd_net, color="RED"):
-    """Macro: LED with current limiting resistor for status indication."""
+    """Macro: LED with current limiting resistor."""
     led = Part('Device', 'LED', footprint='LED_SMD:LED_0603_1608Metric')
     res = Part('Device', 'R', value='330', footprint='Resistor_SMD:R_0603_1608Metric')
     
     signal_net += res[1]
-    res[2]     += led[1] # Anode
-    led[2]     += gnd_net # Cathode
+    res[2]     += led[1]
+    led[2]     += gnd_net
     
     return led, res
     
