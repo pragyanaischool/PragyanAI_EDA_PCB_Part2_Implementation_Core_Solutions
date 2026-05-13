@@ -25,8 +25,8 @@ def get_artifacts():
     net_files = glob.glob("outputs/netlists/*.net")
     bom_files = glob.glob("outputs/boms/*.csv")
     
-    # Priority: Search for 'threading.net' specifically or the latest .net file
-    net = next((f for f in net_files if "threading" in f or "Smart_Monitor" in f), None)
+    # Priority check for the specific netlist and latest BOM
+    net = next((f for f in net_files if "Smart_Monitor" in f or "threading" in f), None)
     if not net and net_files:
         net = max(net_files, key=os.path.getctime)
         
@@ -59,7 +59,7 @@ def parse_netlist(path):
 comp_map, net_list = parse_netlist(netlist_path)
 
 # =========================================================
-# 📊 SECTION 1: ENGINEERING SOURCE ANALYTICS
+# 📊 SECTION 1: ENGINEERING SOURCE ANALYTICS (NOW FIRST)
 # =========================================================
 st.divider()
 st.subheader("📊 Engineering Source Analytics")
@@ -72,7 +72,7 @@ with tab2:
     if bom_path:
         st.dataframe(pd.read_csv(bom_path), use_container_width=True, hide_index=True)
     else:
-        st.info("BOM file not found in directory.")
+        st.info("BOM file not found.")
 
 # =========================================================
 # 📋 SECTION 2: REFINED ENGINEERING DATA
@@ -81,23 +81,23 @@ st.divider()
 st.subheader("📋 Refined Engineering Data")
 st.info(f"**Analyzing Refined Logic:** {os.path.basename(netlist_path)}")
 
-# Display Component Map extracted from Netlist
 if comp_map:
     st.dataframe(pd.DataFrame(comp_map.items(), columns=["Designator", "Part Specification"]), 
                  use_container_width=True, hide_index=True)
-else:
-    st.error("Netlist is empty or improperly formatted. No components identified.")
 
 # --- 🖌️ SCHEMATIC GENERATION ENGINE ---
 def generate_schematic(components, nets):
-    """Draws the schematic with explicit pin definitions to prevent KeyError."""
+    """
+    Draws the schematic with explicit pin names to populate the .pins dictionary.
+    This prevents the KeyError: 'VIN' or '3V3'.
+    """
     d = schemdraw.Drawing()
     
-    # 1. Component Role Identification (Heuristics)
+    # Identify Roles
     mcu_ref = next((ref for ref, val in components.items() if "ESP32" in val.upper()), "U1")
     reg_ref = next((ref for ref, val in components.items() if "1117" in val or "3.3V" in val), "U2")
     
-    # 2. Draw Voltage Regulator (Explicitly define pins to populate .pins dictionary)
+    # 1. Regulator (Explicit pins to fix KeyError)
     reg = d.add(elm.Ic(
         label=f"{reg_ref}\n{components.get(reg_ref, 'AMS1117')}",
         pins=[
@@ -107,13 +107,13 @@ def generate_schematic(components, nets):
         ]
     ))
     
-    # Secure wiring using explicit pin keys defined above
+    # Accessing .pins['VIN'] now works because it was named above
     d.add(elm.Line().at(reg.pins['VIN']).left().length(1))
     d.add(elm.Dot().label("VCC_IN (5V)", loc='left'))
     d.add(elm.Line().at(reg.pins['GND']).down().length(0.5))
     d.add(elm.Ground())
 
-    # 3. Draw MCU (Explicitly define pins)
+    # 2. MCU (Explicit pins)
     d.move(dx=5)
     mcu = d.add(elm.Ic(
         label=f"{mcu_ref}\n{components.get(mcu_ref, 'ESP32-S3')}",
@@ -125,15 +125,14 @@ def generate_schematic(components, nets):
         ]
     ).anchor('3V3'))
 
-    # 4. Logical Wiring: Connect Regulator VOUT to MCU 3V3 if netlist confirms
-    pwr_net = next((n for n in nets if n['net'].upper() in ["3V3", "VCC", "3.3V"]), None)
+    # 3. Connection Logic from Netlist
+    pwr_net = next((n for n in nets if n['net'].upper() in ["3V3", "3.3V", "VCC"]), None)
     if pwr_net:
         d.add(elm.Line().at(reg.pins['VOUT']).to(mcu.pins['3V3']).color('red').label("3.3V Rail"))
     
     d.add(elm.Line().at(mcu.pins['GND']).down().length(0.5))
     d.add(elm.Ground())
 
-    # 5. Export Logic
     out_dir = "outputs/reports"
     os.makedirs(out_dir, exist_ok=True)
     img_path = os.path.join(out_dir, "Schematic_Visual.png")
@@ -145,12 +144,8 @@ def generate_schematic(components, nets):
 # =========================================================
 st.divider()
 if st.button("🪄 Render High-Fidelity Schematic", use_container_width=True, type="primary"):
-    if comp_map:
-        with st.spinner("Executing Semantic Drawing Engine..."):
-            st.session_state.rendered_img = generate_schematic(comp_map, net_list)
-            st.success("High-Fidelity Schematic Ready!")
-    else:
-        st.error("No components found to render.")
+    with st.spinner("Processing Logic Paths..."):
+        st.session_state.rendered_img = generate_schematic(comp_map, net_list)
 
 if "rendered_img" in st.session_state:
     st.subheader("📐 Semantic Schematic Preview")
@@ -158,12 +153,12 @@ if "rendered_img" in st.session_state:
     with st.container(border=True):
         st.image(Image.open(st.session_state.rendered_img), use_container_width=True)
         
-        # Actions Row
-        col1, col2, _ = st.columns([1, 1, 2])
-        with col1:
+        # Download and Refresh row
+        btn_col1, btn_col2, _ = st.columns([1, 1, 2])
+        with btn_col1:
             with open(st.session_state.rendered_img, "rb") as f:
-                st.download_button("💾 Download PNG", f, "PragyanAI_Schematic.png", "image/png", use_container_width=True)
-        with col2:
-            if st.button("🔄 Refresh / Redraw", use_container_width=True):
+                st.download_button("💾 Save PNG", f, "PragyanAI_Schematic.png", "image/png", use_container_width=True)
+        with btn_col2:
+            if st.button("🔄 Redraw / Refresh", use_container_width=True):
                 st.session_state.pop("rendered_img")
                 st.rerun()
