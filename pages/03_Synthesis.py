@@ -5,7 +5,7 @@ import json
 from PIL import Image
 from main_worker import ImplementationWorker
 
-# --- 🎨 PAGE CONFIG ---
+# --- PAGE CONFIG ---
 st.set_page_config(
     page_title="PragyanAI Synthesis | Phase 3",
     page_icon="⚙️",
@@ -19,14 +19,15 @@ try:
 except FileNotFoundError:
     pass
 
+st.image("PragyanAI_Transperent.png")
 st.sidebar.title("Implementation Core")
 st.sidebar.info("Phase 3: Hardware Synthesis")
 
-# --- 🧠 SESSION STATE INITIALIZATION ---
+# --- SESSION STATE INITIALIZATION ---
 if "synthesis_done" not in st.session_state:
     st.session_state.synthesis_done = False
 
-# --- 🧠 DATA VALIDATION ---
+# --- DATA VALIDATION ---
 plan = st.session_state.get("arch_plan")
 project_title = st.session_state.get("project_title", "Unnamed_Project")
 
@@ -41,7 +42,7 @@ if not plan:
 
 st.divider()
 
-# --- 🏭 SYNTHESIS CONSOLE ---
+# --- SYNTHESIS CONSOLE ---
 st.subheader("Synthesis Factory Console")
 st.write("Trigger the automated EDA pipeline to map footprints, wire the netlist, and generate the procurement BOM.")
 
@@ -54,13 +55,12 @@ with st.expander(" View Synthesis Parameters", expanded=not st.session_state.syn
         st.write("**BOM Format:** CSV (Procurement Ready)")
         st.write(f"**Mapping Mode:** Heuristic Index-Aware")
 
-# --- 🚀 EXECUTION LOGIC ---
+# --- EXECUTION LOGIC ---
 # We only show the "Start" button if synthesis hasn't been completed yet
 if not st.session_state.synthesis_done:
     if st.button(" Start Hardware Synthesis", type="primary", use_container_width=True):
         progress_bar = st.progress(0)
         status_text = st.empty()
-        
         try:
             status_text.text("Synchronizing architecture plan...")
             progress_bar.progress(10)
@@ -80,6 +80,20 @@ if not st.session_state.synthesis_done:
                 success = worker.run()
                 
             if success:
+                # 2. Retrieve mapped_data from worker to draw the PCB
+                # We need the physical info to know what to draw!
+                mapper = FootprintMapper()
+                mapped_data = mapper.map(plan)
+                
+                status_text.text("Generating 2D PCB Physical Preview...")
+                
+                # --- ADD THE NEW CODE HERE ---
+                safe_name = project_title.replace(" ", "_")
+                pcb_image_path = f"outputs/reports/{safe_name}_PCB.png"
+                
+                # Call the preview generator
+                worker.generate_pcb_preview(mapped_data, pcb_image_path)
+                
                 progress_bar.progress(100)
                 st.session_state.synthesis_done = True
                 st.balloons()
@@ -92,7 +106,7 @@ if not st.session_state.synthesis_done:
             st.markdown("### 🛠️ Troubleshooting")
             st.info("Check that your JSON includes the 'mcu' and 'power_tree' keys.")
 
-# --- 🏁 NAVIGATION BLOCK (Visible only after success) ---
+# --- NAVIGATION BLOCK (Visible only after success) ---
 if st.session_state.synthesis_done:
     st.success(" **Engineering Artifacts Generated Successfully!**")
     
@@ -115,7 +129,7 @@ if st.session_state.synthesis_done:
         st.session_state.synthesis_done = False
         st.rerun()
 
-# --- 📊 SIDEBAR STATUS ---
+# --- SIDEBAR STATUS ---
 st.sidebar.markdown("---")
 st.sidebar.write("**Synthesis Status:**")
 if st.session_state.synthesis_done:
