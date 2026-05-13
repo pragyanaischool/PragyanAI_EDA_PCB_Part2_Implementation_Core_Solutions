@@ -120,9 +120,17 @@ if st.session_state.arch_plan:
             else:
                 st.info(report)
 
-    st.divider()
-    st.info("💡 **Ready to Proceed?** Navigate to **'02_Blueprint'** in the sidebar to review the connectivity mapping.")
-
+        st.divider()
+        st.subheader(" Finalize Phase 1")
+    
+        col_nav1, col_nav2 = st.columns([3, 1])
+        with col_nav1:
+            st.info("Review complete? Ensure you have saved your plan after addressing the Critic's suggestions.")
+        
+        with col_nav2:
+            # Explicit button to trigger page switch
+            if st.button("Review Blueprint ➡️", type="primary", use_container_width=True):
+                st.switch_page("pages/02_Blueprint.py")
 else:
     st.info("Please upload an 'architecture_plan.json' or provide the project title to begin.")
 
