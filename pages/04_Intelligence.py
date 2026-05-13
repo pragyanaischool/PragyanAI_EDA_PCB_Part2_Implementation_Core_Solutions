@@ -4,7 +4,7 @@ import glob
 import pandas as pd
 from PIL import Image
 
-# --- 🎨 PAGE CONFIG ---
+# --- PAGE CONFIG ---
 st.set_page_config(
     page_title="PragyanAI Intelligence | Phase 4",
     page_icon="💎",
@@ -18,10 +18,11 @@ try:
 except FileNotFoundError:
     pass
 
+st.image("PragyanAI_Transperent.png")
 st.sidebar.title("Intelligence Hub")
 st.sidebar.info("Phase 4: Design Traceability")
 
-# --- 🧠 DATA & PATH SETUP ---
+# --- DATA & PATH SETUP ---
 plan = st.session_state.get("arch_plan")
 # Get the project title, defaulting to the worker's default
 project_title = st.session_state.get("project_title", "PragyanAI_Design")
@@ -36,7 +37,7 @@ if not plan:
         st.switch_page("pages/03_Synthesis.py")
     st.stop()
 
-# --- 📦 ARTIFACT DISCOVERY ENGINE ---
+# --- ARTIFACT DISCOVERY ENGINE ---
 # We look for the specific safe_name, but fallback to glob if needed
 netlist_expected = f"outputs/netlists/{safe_name}.net"
 bom_expected = f"outputs/boms/{safe_name}_BOM.csv"
@@ -51,7 +52,7 @@ def get_latest_file(directory, extension):
 netlist_path = netlist_expected if os.path.exists(netlist_expected) else get_latest_file("outputs/netlists", "net")
 bom_path = bom_expected if os.path.exists(bom_expected) else get_latest_file("outputs/boms", "csv")
 
-# --- 📥 DOWNLOAD CENTER ---
+# --- DOWNLOAD CENTER ---
 st.divider()
 st.subheader("Download Engineering Assets")
 col_dl1, col_dl2 = st.columns(2)
@@ -62,7 +63,7 @@ with col_dl1:
         st.success(f"✅ Netlist Verified: {os.path.basename(netlist_path)}")
         with open(netlist_path, "rb") as f:
             st.download_button(
-                label="💾 Download KiCad Netlist",
+                label=" Download KiCad Netlist",
                 data=f,
                 file_name=os.path.basename(netlist_path),
                 mime="text/plain",
@@ -77,7 +78,7 @@ with col_dl2:
         st.success(f"✅ BOM Verified: {os.path.basename(bom_path)}")
         with open(bom_path, "rb") as f:
             st.download_button(
-                label="📊 Download Procurement BOM",
+                label=" Download Procurement BOM",
                 data=f,
                 file_name=os.path.basename(bom_path),
                 mime="text/csv",
@@ -86,7 +87,7 @@ with col_dl2:
     else:
         st.error("❌ BOM artifact missing. Run synthesis in Phase 3.")
 
-# --- 📋 PROCUREMENT PREVIEW ---
+# --- PROCUREMENT PREVIEW ---
 if bom_path and os.path.exists(bom_path):
     st.divider()
     st.subheader("BOM Summary Preview")
@@ -96,7 +97,7 @@ if bom_path and os.path.exists(bom_path):
     except Exception as e:
         st.caption(f"Could not preview BOM: {e}")
 
-# --- 🤖 DESIGN INTELLIGENCE CHATBOT ---
+# --- DESIGN INTELLIGENCE CHATBOT ---
 st.divider()
 st.subheader("Design Traceability & Reasoning")
 st.write("Query the AI Architect regarding hardware choices and synthesis logic.")
@@ -131,7 +132,7 @@ if prompt := st.chat_input("Ex: Why was the AMS1117-3.3 selected?"):
         st.markdown(response)
         st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-# --- 🛠️ RESET SIDEBAR ---
+# --- RESET SIDEBAR ---
 st.sidebar.markdown("---")
 if st.sidebar.button("New Project"):
     # Clear session relevant data
