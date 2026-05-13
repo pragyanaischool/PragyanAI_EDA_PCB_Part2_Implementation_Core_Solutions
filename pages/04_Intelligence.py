@@ -97,6 +97,34 @@ if bom_path and os.path.exists(bom_path):
     except Exception as e:
         st.caption(f"Could not preview BOM: {e}")
 
+# ---- VIRTUAL PCB INSPECTION -----
+st.divider()
+st.subheader(" Physical Design Preview (AI Conceptualization)")
+
+# 1. Flexible Discovery: Look for any PNG in the reports folder
+report_files = glob.glob("outputs/reports/*.png")
+
+if report_files:
+    # Pick the most recent one
+    latest_pcb = max(report_files, key=os.path.getctime)
+    
+    pcb_img = Image.open(latest_pcb)
+    st.image(pcb_img, caption=f"Synthesized PCB Layout: {os.path.basename(latest_pcb)}", use_container_width=True)
+    
+    # Download button for the image
+    with open(latest_pcb, "rb") as f:
+        st.download_button(
+            label="🖼️ Save Design Preview (.png)",
+            data=f,
+            file_name=os.path.basename(latest_pcb),
+            mime="image/png",
+            use_container_width=True
+        )
+else:
+    st.info("💡 No PCB preview found. Ensure Phase 3 completed the 'Visual Conceptualization' step.")
+    # Debug info for the developer (useful during demo testing)
+    # st.write(f"Searching in: {os.path.abspath('outputs/reports/')}")
+
 # --- DESIGN INTELLIGENCE CHATBOT ---
 st.divider()
 st.subheader("Design Traceability & Reasoning")
