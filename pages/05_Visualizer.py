@@ -45,48 +45,80 @@ comp_map, net_list = parse_netlist(netlist_path)
 
 # --- SCHEMATIC GENERATION ---
 def generate_schematic(components, nets):
+    """
+    Renders a schematic diagram by matching parsed netlist components 
+    to Schemdraw elements.
+    """
+    # Initialize a new drawing with IEEE styling
     d = schemdraw.Drawing()
     
-    # 1. Place ESP32
+    # --- 1. COMPONENT DISCOVERY ---
+    # Look for the MCU (ESP32)
     mcu_ref = next((ref for ref, val in components.items() if "ESP32" in val.upper()), None)
-    esp = None
-    if mcu_ref:
-        esp = d.add(elm.Ic(label=f"{mcu_ref}\n{components[mcu_ref]}", 
-                           pins=[
-                               elm.IcPin(name='3V3', side='left', slot='1/2'), 
-                               elm.IcPin(name='GND', side='left', slot='2/2')
-                           ]))
-    
-    # 2. Place Regulator
+    # Look for the Regulator (1117)
     reg_ref = next((ref for ref, val in components.items() if "1117" in val), None)
+    
+    esp = None
     reg = None
+
+    # --- 2. PLACEMENT ---
+    # Place ESP32 on the left
+    if mcu_ref:
+        esp = d.add(elm.Ic(
+            label=f"{mcu_ref}\n{components[mcu_ref]}", 
+            pins=[
+                elm.IcPin(name='3V3', side='right', slot='1/4'), 
+                elm.IcPin(name='GND', side='right', slot='4/4')
+            ]
+        ))
+    
+    # Place Regulator to the right of the MCU
     if reg_ref:
-        d.move(dx=5)
-        reg = d.add(elm.Ic(label=f"{reg_ref}\n{components[reg_ref]}",
-                           pins=[
-                               elm.IcPin(name='VIN', side='left'),
-                               elm.IcPin(name='GND', side='bottom'),
-                               elm.IcPin(name='VOUT', side='right')
-                           ]))
+        # Move the drawing cursor 5 units to the right
+        d.move(dx=8) 
+        reg = d.add(elm.Ic(
+            label=f"{reg_ref}\n{components[reg_ref]}",
+            pins=[
+                elm.IcPin(name='VIN', side='left'),
+                elm.IcPin(name='GND', side='bottom'),
+                elm.IcPin(name='VOUT', side='left') # Placed on left to face MCU
+            ]
+        ))
         
-    # 3. Automated Wiring with Error Checking
+    # --- 3. WIRING & CONNECTIONS ---
+    # Only draw connections if both essential parts were found
     if esp and reg:
         try:
-            # FIX: Use .absanchors if .pins fails, or ensure the key exists
-            d.add(elm.Line().at(esp.3V3).to(reg.VOUT)) 
+            # Wire 3V3 Net (Dictionary access avoids Python naming syntax errors)
+            # We connect the MCU's 3V3 pin to the Regulator's VOUT
+            d.add(elm.Line().at(esp.pins['3V3']).to(reg.pins['VOUT']).color('red').label("3.3V Rail"))
             
-            d.add(elm.Vline().at(esp.GND).length(1))
+            # Connect Grounds with standard symbols
+            # MCU Ground
+            d.add(elm.Line().at(esp.pins['GND']).right().length(0.5))
             d.add(elm.Ground())
             
-            d.add(elm.Vline().at(reg.GND).length(1))
+            # Regulator Ground
+            d.add(elm.Line().at(reg.pins['GND']).down().length(0.5))
             d.add(elm.Ground())
-        except AttributeError:
-            # Fallback to dictionary access if attribute access fails
-            d.add(elm.Line().at(esp.pins['3V3']).to(reg.pins['VOUT']))
-            d.add(elm.Ground().at(esp.pins['GND']))
-            d.add(elm.Ground().at(reg.pins['GND']))
+            
+            # Add a decorative Power Label for VIN
+            d.add(elm.Line().at(reg.pins['VIN']).left().length(1))
+            d.add(elm.Dot().label("VCC_IN (5V)", loc='left'))
 
-    output_img = "outputs/reports/Schematic_Visual.png"
+        except KeyError as e:
+            # This catches cases where pin names in the dictionary don't match the wiring logic
+            print(f"[Internal Debug] Pin Mapping Error: {e}")
+        except Exception as e:
+            print(f"[Internal Debug] Drawing Error: {e}")
+
+    # --- 4. EXPORT ---
+    # Ensure the directory exists
+    output_dir = "outputs/reports"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
+    output_img = os.path.join(output_dir, "Schematic_Visual.png")
     d.save(output_img)
     return output_img
 
