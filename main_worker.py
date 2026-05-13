@@ -91,6 +91,37 @@ class ImplementationWorker:
             # Raise the exception so the Streamlit UI can display the error to the user
             raise e
 
+from PIL import Image, ImageDraw, ImageFont
+
+def generate_pcb_preview(self, mapped_data, output_path):
+    """Generates a 2D top-down visual representation of the synthesized PCB."""
+    # Board Constants (Pixels)
+    W, H = 800, 600
+    img = Image.new('RGB', (W, H), color='#0A3D1B') # Classic PCB Green
+    draw = ImageDraw.Draw(img)
+    
+    # Draw Board Edge
+    draw.rectangle([10, 10, W-10, H-10], outline='#FFD700', width=3) # Gold immersion edge
+    
+    # Placement Logic (Simple Grid for Preview)
+    x_offset, y_offset = 60, 80
+    
+    for comp in mapped_data:
+        # Draw Component Body
+        c_color = "#333333" if comp['type'] == 'mcu' else "#BDBDBD"
+        draw.rectangle([x_offset, y_offset, x_offset+80, y_offset+60], fill=c_color, outline="white")
+        
+        # Label Designator
+        draw.text((x_offset+5, y_offset+5), comp['id'], fill="#FFD700")
+        draw.text((x_offset+5, y_offset+40), comp['label'][:10], fill="white")
+        
+        x_offset += 120
+        if x_offset > 700:
+            x_offset = 60
+            y_offset += 100
+
+    img.save(output_path)
+    return output_path
 # Self-test block for local debugging
 if __name__ == "__main__":
     worker = ImplementationWorker()
