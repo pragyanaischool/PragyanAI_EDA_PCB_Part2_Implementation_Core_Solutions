@@ -2,6 +2,7 @@ import os
 import json
 import logging
 from rich.console import Console
+from PIL import Image, ImageDraw, ImageFont
 
 # Import the Implementation Core Engines
 from core_engine.schematic_gen import SchematicGenerator
@@ -41,7 +42,55 @@ class ImplementationWorker:
         except Exception as e:
             logger.error(f"Failed to load architecture plan: {e}")
             return False
+    def generate_pcb_preview(self, mapped_data, output_path):
+        """
+        FIX APPLIED: Added the missing visualization method.
+        Generates a 2D top-down visual representation of the synthesized PCB.
+        """
+        try:
+            logger.info(f"Generating 2D PCB Preview at: {output_path}")
+            # Board Constants (Pixels)
+            W, H = 800, 600
+            img = Image.new('RGB', (W, H), color='#0A3D1B') # Classic PCB Green
+            draw = ImageDraw.Draw(img)
+            
+            # Draw Board Edge (Gold immersion)
+            draw.rectangle([10, 10, W-10, H-10], outline='#FFD700', width=5)
+            
+            # Placement Logic (Simple Grid for Preview)
+            x_offset, y_offset = 60, 80
+            
+            for comp in mapped_data:
+                # Component Body color (MCU is darker)
+                c_color = "#1A1A1A" if comp['type'] == 'mcu' else "#CCCCCC"
+                body_box = [x_offset, y_offset, x_offset+100, y_offset+80]
+                
+                # Draw Component
+                draw.rectangle(body_box, fill=c_color, outline="white", width=2)
+                
+                # Draw "Pins" (visual detail)
+                for p in range(x_offset+5, x_offset+100, 15):
+                    draw.rectangle([p, y_offset-5, p+5, y_offset], fill="#FFD700") # Top pins
+                    draw.rectangle([p, y_offset+80, p+5, y_offset+85], fill="#FFD700") # Bottom pins
+                
+                # Label Designator & Value
+                draw.text((x_offset+5, y_offset+5), comp.get('id', '??'), fill="#FFD700")
+                draw.text((x_offset+5, y_offset+55), comp.get('label', 'Part')[:12], fill="white")
+                
+                x_offset += 150
+                if x_offset > 650:
+                    x_offset = 60
+                    y_offset += 150
 
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            img.save(output_path)
+            logger.info("PCB Preview Image saved successfully.")
+            return True
+        except Exception as e:
+            logger.error(f"PCB Preview generation failed: {e}")
+            return False
+            
     def run(self):
         """
         Executes the full Hardware Synthesis Pipeline.
@@ -91,37 +140,7 @@ class ImplementationWorker:
             # Raise the exception so the Streamlit UI can display the error to the user
             raise e
 
-from PIL import Image, ImageDraw, ImageFont
 
-def generate_pcb_preview(self, mapped_data, output_path):
-    """Generates a 2D top-down visual representation of the synthesized PCB."""
-    # Board Constants (Pixels)
-    W, H = 800, 600
-    img = Image.new('RGB', (W, H), color='#0A3D1B') # Classic PCB Green
-    draw = ImageDraw.Draw(img)
-    
-    # Draw Board Edge
-    draw.rectangle([10, 10, W-10, H-10], outline='#FFD700', width=3) # Gold immersion edge
-    
-    # Placement Logic (Simple Grid for Preview)
-    x_offset, y_offset = 60, 80
-    
-    for comp in mapped_data:
-        # Draw Component Body
-        c_color = "#333333" if comp['type'] == 'mcu' else "#BDBDBD"
-        draw.rectangle([x_offset, y_offset, x_offset+80, y_offset+60], fill=c_color, outline="white")
-        
-        # Label Designator
-        draw.text((x_offset+5, y_offset+5), comp['id'], fill="#FFD700")
-        draw.text((x_offset+5, y_offset+40), comp['label'][:10], fill="white")
-        
-        x_offset += 120
-        if x_offset > 700:
-            x_offset = 60
-            y_offset += 100
-
-    img.save(output_path)
-    return output_path
 # Self-test block for local debugging
 if __name__ == "__main__":
     worker = ImplementationWorker()
