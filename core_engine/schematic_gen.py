@@ -17,7 +17,6 @@ from skidl import (
 # =========================================================
 
 if hasattr(skidl, 'config'):
-
     skidl.config.query_thread_safe = True
     skidl.config.cache_and_index = False
 
@@ -49,9 +48,7 @@ logger = logging.getLogger(
 kicad_sym_path = "/usr/share/kicad/symbols"
 
 if os.path.exists(kicad_sym_path):
-
     if kicad_sym_path not in lib_search_paths[KICAD]:
-
         lib_search_paths[KICAD].append(
             kicad_sym_path
         )
@@ -67,7 +64,6 @@ if os.path.exists(kicad_sym_path):
     )
 
 else:
-
     logger.warning(
         "KiCad symbols folder not found."
     )
@@ -128,14 +124,11 @@ class SchematicGenerator:
     ):
 
         try:
-
             if pin is None:
-
                 logger.warning(
                     f"Pin missing for "
                     f"{label}"
                 )
-
                 return False
 
             pin += net
@@ -148,12 +141,10 @@ class SchematicGenerator:
             return True
 
         except Exception as e:
-
             logger.warning(
                 f"Connection failed: "
                 f"{label} -> {e}"
             )
-
             return False
 
     # =====================================================
@@ -167,7 +158,6 @@ class SchematicGenerator:
     ):
 
         try:
-
             logger.info(
                 f"Synthesizing: "
                 f"{self.project_name}"
@@ -213,10 +203,13 @@ class SchematicGenerator:
             )
 
             # -------------------------------------------------
-            # INTERFACES
+            # INTERFACES - FIX APPLIED HERE
             # -------------------------------------------------
-
-            interfaces = mapped_data.get(
+            # We access 'plan' (dict) rather than 'mapped_data' (list)
+            # to avoid 'list object has no attribute get'
+            # -------------------------------------------------
+            
+            interfaces = plan.get(
                 "interfaces",
                 {}
             )
@@ -232,7 +225,6 @@ class SchematicGenerator:
                 )
 
                 sda = Net("SDA")
-
                 scl = Net("SCL")
 
                 # ---------------------------------------------
@@ -310,15 +302,12 @@ class SchematicGenerator:
             )
 
             try:
-
                 ERC()
-
                 print(
                     "[INFO] ERC complete."
                 )
 
             except Exception as erc_error:
-
                 logger.warning(
                     f"ERC warning: {erc_error}"
                 )
@@ -331,7 +320,6 @@ class SchematicGenerator:
             return True
 
         except Exception as e:
-
             logger.error(
                 f"Synthesis CRITICAL FAILURE: "
                 f"{str(e)}"
@@ -354,7 +342,6 @@ class SchematicGenerator:
     ):
 
         try:
-
             output_dir = os.path.dirname(
                 output_path
             )
@@ -385,7 +372,6 @@ class SchematicGenerator:
             return True
 
         except Exception as e:
-
             logger.error(
                 f"Netlist generation failed: "
                 f"{str(e)}"
@@ -397,54 +383,3 @@ class SchematicGenerator:
             )
 
             raise e
-
-# =========================================================
-# TEST HARNESS
-# =========================================================
-
-if __name__ == "__main__":
-
-    print(
-        "\n===================================="
-    )
-
-    print(
-        " PragyanAI Schematic Engine Test"
-    )
-
-    print(
-        "====================================\n"
-    )
-
-    gen = SchematicGenerator(
-        project_name="Unit_Test_Build"
-    )
-
-    test_mapped = {
-        "interfaces": {
-            "Sensor": "I2C"
-        }
-    }
-
-    success = gen.build_from_plan(
-        {},
-        test_mapped
-    )
-
-    if success:
-
-        gen.generate_netlist(
-            "outputs/netlists/test.net"
-        )
-
-        print(
-            "\n===================================="
-        )
-
-        print(
-            " BUILD SUCCESSFUL "
-        )
-
-        print(
-            "====================================\n"
-        )
