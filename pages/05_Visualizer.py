@@ -225,26 +225,28 @@ def generate_schematic(components, nets):
         "U2"
     )
 
-    # -----------------------------------------------------
-    # DRAW REGULATOR
-    # -----------------------------------------------------
-    regulator = elm.Ic(
-        label=f"{reg_ref}\n{components.get(reg_ref, 'AMS1117')}",
-        pins=[
-            elm.IcPin(name='VIN', side='left'),
-            elm.IcPin(name='GND', side='bottom'),
-            elm.IcPin(name='VOUT', side='right')
-        ]
+    # =====================================================
+    # REGULATOR
+    # =====================================================
+    regulator = d.add(
+        elm.Ic(
+            label=f"{reg_ref}\n{components.get(reg_ref, 'AMS1117')}",
+            pins=[
+                elm.IcPin(name='VIN', side='left'),
+                elm.IcPin(name='GND', side='bottom'),
+                elm.IcPin(name='VOUT', side='right')
+            ]
+        )
     )
 
-    regulator = d.add(regulator)
-
     # -----------------------------------------------------
-    # REGULATOR POWER INPUT
+    # INPUT POWER
+    # IMPORTANT FIX:
+    # Use anchors instead of .pins[]
     # -----------------------------------------------------
     d.add(
         elm.Line()
-        .at(regulator.pins['VIN'])
+        .at(regulator.VIN)
         .left()
         .length(1)
     )
@@ -259,63 +261,39 @@ def generate_schematic(components, nets):
     # -----------------------------------------------------
     d.add(
         elm.Line()
-        .at(regulator.pins['GND'])
+        .at(regulator.GND)
         .down()
         .length(0.5)
     )
 
     d.add(elm.Ground())
 
-    # -----------------------------------------------------
-    # MOVE TO MCU SECTION
-    # -----------------------------------------------------
+    # =====================================================
+    # MCU
+    # =====================================================
     d.move(dx=5)
 
-    # -----------------------------------------------------
-    # DRAW MCU
-    # -----------------------------------------------------
-    mcu = elm.Ic(
-        label=f"{mcu_ref}\n{components.get(mcu_ref, 'ESP32-S3')}",
-        pins=[
-            elm.IcPin(name='3V3', side='left'),
-            elm.IcPin(name='GND', side='left'),
-            elm.IcPin(name='SDA', side='right'),
-            elm.IcPin(name='SCL', side='right')
-        ]
-    )
-
-    mcu = d.add(mcu)
-
-    # -----------------------------------------------------
-    # DEBUG INFO
-    # -----------------------------------------------------
-    st.write("### 🔍 Debug Pin Mapping")
-
-    st.code(
-        f"Regulator Pins: {list(regulator.pins.keys())}\n"
-        f"MCU Pins: {list(mcu.pins.keys())}"
+    mcu = d.add(
+        elm.Ic(
+            label=f"{mcu_ref}\n{components.get(mcu_ref, 'ESP32-S3')}",
+            pins=[
+                elm.IcPin(name='3V3', side='left'),
+                elm.IcPin(name='GND', side='left'),
+                elm.IcPin(name='SDA', side='right'),
+                elm.IcPin(name='SCL', side='right')
+            ]
+        )
     )
 
     # -----------------------------------------------------
-    # SAFE PIN MAPPING
-    # -----------------------------------------------------
-    reg_out = find_pin(
-        regulator,
-        ['VOUT', 'OUT', 'VO', '3V3']
-    )
-
-    mcu_power = find_pin(
-        mcu,
-        ['3V3', 'VCC', 'VIN']
-    )
-
-    # -----------------------------------------------------
-    # POWER CONNECTION
+    # POWER RAIL
+    # IMPORTANT FIX:
+    # Use anchors instead of .pins[]
     # -----------------------------------------------------
     d.add(
         elm.Line()
-        .at(reg_out)
-        .to(mcu_power)
+        .at(regulator.VOUT)
+        .to(mcu.__getattr__('3V3'))
         .color('red')
         .label("3.3V Rail")
     )
@@ -323,11 +301,9 @@ def generate_schematic(components, nets):
     # -----------------------------------------------------
     # MCU GROUND
     # -----------------------------------------------------
-    validate_pin(mcu, 'GND')
-
     d.add(
         elm.Line()
-        .at(mcu.pins['GND'])
+        .at(mcu.GND)
         .down()
         .length(0.5)
     )
@@ -335,35 +311,27 @@ def generate_schematic(components, nets):
     d.add(elm.Ground())
 
     # -----------------------------------------------------
-    # OPTIONAL I2C VISUALIZATION
+    # I2C VISUALIZATION
     # -----------------------------------------------------
-    try:
+    d.add(
+        elm.Line()
+        .at(mcu.SDA)
+        .right()
+        .length(1)
+        .label("I2C SDA")
+    )
 
-        validate_pin(mcu, 'SDA')
-        validate_pin(mcu, 'SCL')
+    d.add(
+        elm.Line()
+        .at(mcu.SCL)
+        .right()
+        .length(1)
+        .label("I2C SCL")
+    )
 
-        d.add(
-            elm.Line()
-            .at(mcu.pins['SDA'])
-            .right()
-            .length(1)
-            .label("I2C SDA")
-        )
-
-        d.add(
-            elm.Line()
-            .at(mcu.pins['SCL'])
-            .right()
-            .length(1)
-            .label("I2C SCL")
-        )
-
-    except Exception:
-        pass
-
-    # -----------------------------------------------------
+    # =====================================================
     # SAVE OUTPUT
-    # -----------------------------------------------------
+    # =====================================================
     out_dir = "outputs/reports"
 
     os.makedirs(out_dir, exist_ok=True)
@@ -376,7 +344,6 @@ def generate_schematic(components, nets):
     d.save(img_path)
 
     return img_path
-
 # =========================================================
 # 📐 VISUALIZATION SECTION
 # =========================================================
