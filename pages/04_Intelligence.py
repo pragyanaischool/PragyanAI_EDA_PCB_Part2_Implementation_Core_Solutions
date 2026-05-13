@@ -1,7 +1,7 @@
 import streamlit as st
 import os
+import glob
 import pandas as pd
-import json
 from PIL import Image
 
 # --- 🎨 PAGE CONFIG ---
@@ -18,126 +18,124 @@ try:
 except FileNotFoundError:
     pass
 
-st.sidebar.title("Implementation Core")
-st.sidebar.info("Phase 4: Intelligence & Artifacts")
+st.sidebar.title("Intelligence Hub")
+st.sidebar.info("Phase 4: Design Traceability")
 
-# --- 🧠 DATA RETRIEVAL ---
+# --- 🧠 DATA & PATH SETUP ---
 plan = st.session_state.get("arch_plan")
+# Get the project title, defaulting to the worker's default
 project_title = st.session_state.get("project_title", "PragyanAI_Design")
-safe_proj_name = project_title.replace(" ", "_")
+safe_name = project_title.replace(" ", "_")
 
 st.title("Phase 4: Engineering Intelligence & Artifacts")
-st.markdown(f"Finalizing Implementation for: **{project_title}**")
+st.markdown(f"Finalized Implementation for: **{project_title}**")
 
 if not plan:
-    st.warning("⚠️ No data found. Please complete the synthesis in Phase 3.")
+    st.warning("⚠️ No Architecture Plan detected. Please complete synthesis in Phase 3.")
+    if st.button("⬅️ Back to Synthesis"):
+        st.switch_page("pages/03_Synthesis.py")
     st.stop()
 
-# --- 📦 ARTIFACT DOWNLOAD CENTER ---
+# --- 📦 ARTIFACT DISCOVERY ENGINE ---
+# We look for the specific safe_name, but fallback to glob if needed
+netlist_expected = f"outputs/netlists/{safe_name}.net"
+bom_expected = f"outputs/boms/{safe_name}_BOM.csv"
+
+# Fallback: Find the most recent files in case of naming drift
+def get_latest_file(directory, extension):
+    files = glob.glob(f"{directory}/*.{extension}")
+    if not files:
+        return None
+    return max(files, key=os.path.getctime)
+
+netlist_path = netlist_expected if os.path.exists(netlist_expected) else get_latest_file("outputs/netlists", "net")
+bom_path = bom_expected if os.path.exists(bom_expected) else get_latest_file("outputs/boms", "csv")
+
+# --- 📥 DOWNLOAD CENTER ---
 st.divider()
 st.subheader("Download Engineering Assets")
 col_dl1, col_dl2 = st.columns(2)
 
 # 1. Netlist Section
 with col_dl1:
-    netlist_path = f"outputs/netlists/{safe_proj_name}.net"
-    if os.path.exists(netlist_path):
-        st.success("✅ KiCad Netlist Verified")
+    if netlist_path and os.path.exists(netlist_path):
+        st.success(f"✅ Netlist Verified: {os.path.basename(netlist_path)}")
         with open(netlist_path, "rb") as f:
             st.download_button(
-                label="Download Netlist (.net)",
+                label="💾 Download KiCad Netlist",
                 data=f,
-                file_name=f"{safe_proj_name}.net",
+                file_name=os.path.basename(netlist_path),
                 mime="text/plain",
                 use_container_width=True
             )
-        st.caption("Standard KiCad schematic netlist for PCB routing.")
     else:
-        st.error("Netlist artifact missing. Run synthesis again.")
+        st.error("❌ Netlist artifact missing. Run synthesis in Phase 3.")
 
 # 2. BOM Section
 with col_dl2:
-    bom_path = f"outputs/boms/{safe_proj_name}_BOM.csv"
-    if os.path.exists(bom_path):
-        st.success("✅ Procurement BOM Verified")
+    if bom_path and os.path.exists(bom_path):
+        st.success(f"✅ BOM Verified: {os.path.basename(bom_path)}")
         with open(bom_path, "rb") as f:
             st.download_button(
-                label="📊 Download Procurement BOM (.csv)",
+                label="📊 Download Procurement BOM",
                 data=f,
-                file_name=f"{safe_proj_name}_BOM.csv",
+                file_name=os.path.basename(bom_path),
                 mime="text/csv",
                 use_container_width=True
             )
-        st.caption("Ready for upload to Mouser/DigiKey/LCSC.")
     else:
-        st.error("BOM artifact missing.")
+        st.error("❌ BOM artifact missing. Run synthesis in Phase 3.")
 
-# --- 📊 PROCUREMENT PREVIEW ---
+# --- 📋 PROCUREMENT PREVIEW ---
+if bom_path and os.path.exists(bom_path):
+    st.divider()
+    st.subheader("BOM Summary Preview")
+    try:
+        df_bom = pd.read_csv(bom_path)
+        st.dataframe(df_bom, use_container_width=True, hide_index=True)
+    except Exception as e:
+        st.caption(f"Could not preview BOM: {e}")
+
+# --- 🤖 DESIGN INTELLIGENCE CHATBOT ---
 st.divider()
-st.subheader("BOM Summary Preview")
-if os.path.exists(bom_path):
-    df_bom = pd.read_csv(bom_path)
-    st.dataframe(df_bom, use_container_width=True, hide_index=True)
+st.subheader("Design Traceability & Reasoning")
+st.write("Query the AI Architect regarding hardware choices and synthesis logic.")
 
-# --- 🤖 DESIGN INTELLIGENCE CHATBOT (Explainable AI) ---
-st.divider()
-st.subheader("💬 Design Traceability & Reasoning")
-st.write("Query the AI Architect regarding the hardware choices made during synthesis.")
-
-# Chat history management
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Display chat history
 for message in st.session_state.chat_history:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Chat input logic
-if prompt := st.chat_input("Ex: Why was the AMS1117 selected for the power stage?"):
-    # Store user message
+if prompt := st.chat_input("Ex: Why was the AMS1117-3.3 selected?"):
     st.session_state.chat_history.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Generate Response based on Architecture Plan Context
     with st.chat_message("assistant"):
-        context_response = ""
+        # Basic heuristic reasoning based on plan context
+        response = ""
+        p_low = prompt.lower()
         
-        # Heuristic Reasoning Engine
-        if "ldo" in prompt.lower() or "power" in prompt.lower() or "ams1117" in prompt.lower():
-            context_response = (
-                f"The **AMS1117-3.3** was selected because your architecture specified a stable 3.3V rail "
-                f"for the **{plan.get('mcu', {}).get('family')}**. It provides up to 800mA, which covers "
-                f"the peak Wi-Fi/Bluetooth current spikes defined in your plan."
-            )
-        elif "resistor" in prompt.lower() or "pull-up" in prompt.lower() or "i2c" in prompt.lower():
-            context_response = (
-                "Based on the **I2C protocol** logic in your plan, 4.7kΩ resistors were synthesized "
-                "on the SDA and SCL lines. This ensures the open-drain signals remain within logic high "
-                "thresholds during high-speed sensor data transfers."
-            )
-        elif "esp32" in prompt.lower() or "mcu" in prompt.lower():
-            mcu_choice = plan.get('mcu', {}).get('family', 'ESP32')
-            context_response = (
-                f"The **{mcu_choice}** core was chosen as the primary controller to fulfill your requirements "
-                "for low-power operations and integrated wireless connectivity as outlined in Phase 1."
-            )
+        if "ldo" in p_low or "ams1117" in p_low or "power" in p_low:
+            response = "The AMS1117-3.3 was synthesized to convert the VCC_IN rail to a stable 3.3V supply for the MCU, ensuring thermal stability within the SOT-223 package constraints."
+        elif "esp32" in p_low or "mcu" in p_low:
+            mcu_fam = plan.get("mcu", {}).get("family", "ESP32")
+            response = f"The {mcu_fam} was selected as the central agent to meet the wireless connectivity and GPIO requirements defined in your architecture plan."
+        elif "i2c" in p_low or "sda" in p_low:
+            response = "The I2C bus synthesis included 4.7kΩ pull-up resistors on SDA/SCL to ensure signal integrity across the open-drain communication lines."
         else:
-            context_response = (
-                "This design decision was derived directly from your Architecture Plan JSON. "
-                "Every component and connection in the generated Netlist is mapped 1:1 with your "
-                "logical functional blocks to ensure hardware-to-logic traceability."
-            )
+            response = "This design detail is derived directly from the logical constraints of the Architecture Plan and physical requirements defined in the Footprint Mapper."
         
-        st.markdown(context_response)
-        st.session_state.chat_history.append({"role": "assistant", "content": context_response})
+        st.markdown(response)
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-# --- 🛠️ RESET & NEW PROJECT ---
+# --- 🛠️ RESET SIDEBAR ---
 st.sidebar.markdown("---")
-if st.sidebar.button("Clear Current Project"):
+if st.sidebar.button("New Project"):
+    # Clear session relevant data
     st.session_state.arch_plan = None
-    st.session_state.project_title = ""
+    st.session_state.synthesis_done = False
     st.session_state.chat_history = []
-    st.sidebar.warning("Session Cleared.")
     st.switch_page("app.py")
