@@ -4,7 +4,7 @@ import time
 from PIL import Image
 from main_worker import ImplementationWorker
 
-# --- 🎨 PAGE CONFIG ---
+# --- PAGE CONFIG ---
 st.set_page_config(
     page_title="PragyanAI Synthesis | Phase 3",
     page_icon="⚙️",
@@ -21,10 +21,11 @@ except FileNotFoundError:
 st.sidebar.title("Implementation Core")
 st.sidebar.info("Phase 3: Hardware Synthesis")
 
-# --- 🧠 DATA VALIDATION ---
+# --- DATA VALIDATION ---
 plan = st.session_state.get("arch_plan")
 project_title = st.session_state.get("project_title", "Unnamed_Project")
 
+st.image("PragyanAI_Transperent.png")
 st.title("Phase 3: Hardware Synthesis Engine")
 st.markdown(f"Compiling Architecture for: **{project_title}**")
 
@@ -34,7 +35,7 @@ if not plan:
 
 st.divider()
 
-# --- 🏭 SYNTHESIS CONSOLE ---
+# --- SYNTHESIS CONSOLE ---
 st.subheader("Synthesis Factory Console")
 st.write("Click below to trigger the automated EDA pipeline. This will map footprints, wire the netlist, and generate the procurement BOM.")
 
@@ -48,7 +49,7 @@ with st.expander("View Synthesis Parameters", expanded=True):
         st.write("**BOM Format:** CSV (Procurement Ready)")
         st.write(f"**Mapping Mode:** Heuristic Index-Aware")
 
-# --- 🚀 EXECUTION LOGIC ---
+# --- EXECUTION LOGIC ---
 if st.button("Start Hardware Synthesis", type="primary", use_container_width=True):
     # Create a progress bar for visual feedback during the "deep-tech" process
     progress_bar = st.progress(0)
@@ -98,7 +99,7 @@ if st.button("Start Hardware Synthesis", type="primary", use_container_width=Tru
         st.markdown("### 🛠️ Troubleshooting")
         st.write("Ensure that the `architecture_plan.json` format matches the expected schema and that all required hardware macros are present in `libraries/pragyan_symbols.py`.")
 
-# --- 📊 STATUS FOOTER ---
+# --- STATUS FOOTER ---
 st.sidebar.markdown("---")
 st.sidebar.write("**Synthesis Status:**")
 if plan:
@@ -111,4 +112,4 @@ if os.path.exists("outputs/netlists/"):
     st.sidebar.write("**Artifacts History:**")
     files = os.listdir("outputs/netlists/")
     for file in files[-3:]: # Show last 3
-        st.sidebar.caption(f"📄 {file}")
+        st.sidebar.caption(f"{file}")
