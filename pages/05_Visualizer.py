@@ -10,45 +10,34 @@ import pandas as pd
 # --- 🎨 PAGE CONFIG ---
 st.set_page_config(page_title="PragyanAI Visualizer | Phase 5", page_icon="🎨", layout="wide")
 
-# Sidebar Branding
-try:
-    logo = Image.open("PragyanAI_Transperent.png")
-    st.sidebar.image(logo, width=180)
-except FileNotFoundError:
-    pass
-
 st.image("PragyanAI_Transperent.png")
 st.title("🎨 Phase 5: Automated Circuit Visualizer")
 
 # --- 📂 ARTIFACT DISCOVERY ---
 def get_artifacts():
+    # Priority search for 'threading.net' or 'Smart_Monitor'
     net_files = glob.glob("outputs/netlists/*.net")
     bom_files = glob.glob("outputs/boms/*.csv")
     
-    # Priority check for the specific netlist and latest BOM
-    net = next((f for f in net_files if "Smart_Monitor" in f or "threading" in f), None)
-    if not net and net_files:
-        net = max(net_files, key=os.path.getctime)
-        
+    net = next((f for f in net_files if "threading" in f or "Smart_Monitor" in f), None)
+    if not net and net_files: net = max(net_files, key=os.path.getctime)
+    
     bom = next((f for f in bom_files if "BOM" in f), None)
-    if not bom and bom_files:
-        bom = max(bom_files, key=os.path.getctime)
-        
+    if not bom and bom_files: bom = max(bom_files, key=os.path.getctime)
+    
     return net, bom
 
 netlist_path, bom_path = get_artifacts()
 
 if not netlist_path:
-    st.warning("⚠️ No Netlist found. Please complete Phase 4 Audit first.")
+    st.warning("⚠️ No Netlist found. Audit Phase 4 first.")
     st.stop()
 
 # --- 🧠 PARSING ENGINE ---
 def parse_netlist(path):
     with open(path, "r") as f:
         content = f.read()
-    # Extract Components: (Ref, Value)
     components = re.findall(r'\(comp \(ref (.*?)\).*?\(value (.*?)\)', content, re.DOTALL)
-    # Extract Nets: (Name, Nodes)
     nets_raw = re.findall(r'\(net \(code .*?\) \(name "(.*?)"\)(.*?)\)\)', content, re.DOTALL)
     parsed_nets = []
     for name, body in nets_raw:
@@ -59,20 +48,18 @@ def parse_netlist(path):
 comp_map, net_list = parse_netlist(netlist_path)
 
 # =========================================================
-# 📊 SECTION 1: ENGINEERING SOURCE ANALYTICS (NOW FIRST)
+# 📊 SECTION 1: ENGINEERING SOURCE ANALYTICS
 # =========================================================
 st.divider()
 st.subheader("📊 Engineering Source Analytics")
-tab1, tab2 = st.tabs(["📜 Netlist Logic (KiCad)", "📦 BOM Items (Procurement)"])
+t1, t2 = st.tabs(["📜 Netlist Logic (KiCad)", "📦 BOM Items (Procurement)"])
 
-with tab1:
+with t1:
     with open(netlist_path, "r") as f:
         st.code(f.read(), language="scheme")
-with tab2:
+with t2:
     if bom_path:
         st.dataframe(pd.read_csv(bom_path), use_container_width=True, hide_index=True)
-    else:
-        st.info("BOM file not found.")
 
 # =========================================================
 # 📋 SECTION 2: REFINED ENGINEERING DATA
@@ -87,17 +74,14 @@ if comp_map:
 
 # --- 🖌️ SCHEMATIC GENERATION ENGINE ---
 def generate_schematic(components, nets):
-    """
-    Draws the schematic with explicit pin names to populate the .pins dictionary.
-    This prevents the KeyError: 'VIN' or '3V3'.
-    """
     d = schemdraw.Drawing()
     
-    # Identify Roles
+    # 1. Identify Components
     mcu_ref = next((ref for ref, val in components.items() if "ESP32" in val.upper()), "U1")
     reg_ref = next((ref for ref, val in components.items() if "1117" in val or "3.3V" in val), "U2")
     
-    # 1. Regulator (Explicit pins to fix KeyError)
+    # 2. Draw Regulator (CRITICAL: Explicitly define pins in a list)
+    # The KeyError happens if 'VIN' isn't registered exactly like this:
     reg = d.add(elm.Ic(
         label=f"{reg_ref}\n{components.get(reg_ref, 'AMS1117')}",
         pins=[
@@ -107,13 +91,16 @@ def generate_schematic(components, nets):
         ]
     ))
     
-    # Accessing .pins['VIN'] now works because it was named above
-    d.add(elm.Line().at(reg.pins['VIN']).left().length(1))
-    d.add(elm.Dot().label("VCC_IN (5V)", loc='left'))
-    d.add(elm.Line().at(reg.pins['GND']).down().length(0.5))
-    d.add(elm.Ground())
+    # Wiring with error handling
+    try:
+        d.add(elm.Line().at(reg.pins['VIN']).left().length(1))
+        d.add(elm.Dot().label("VCC_IN (5V)", loc='left'))
+        d.add(elm.Line().at(reg.pins['GND']).down().length(0.5))
+        d.add(elm.Ground())
+    except KeyError:
+        st.error("Schematic Error: Could not map Regulator Pins. Check Netlist definitions.")
 
-    # 2. MCU (Explicit pins)
+    # 3. Draw MCU
     d.move(dx=5)
     mcu = d.add(elm.Ic(
         label=f"{mcu_ref}\n{components.get(mcu_ref, 'ESP32-S3')}",
@@ -125,7 +112,7 @@ def generate_schematic(components, nets):
         ]
     ).anchor('3V3'))
 
-    # 3. Connection Logic from Netlist
+    # 4. Connection Logic
     pwr_net = next((n for n in nets if n['net'].upper() in ["3V3", "3.3V", "VCC"]), None)
     if pwr_net:
         d.add(elm.Line().at(reg.pins['VOUT']).to(mcu.pins['3V3']).color('red').label("3.3V Rail"))
@@ -140,12 +127,15 @@ def generate_schematic(components, nets):
     return img_path
 
 # =========================================================
-# 📐 SECTION 3: VISUALIZATION & ACTIONS
+# 📐 SECTION 3: VISUALIZATION & ACTIONS (LAST)
 # =========================================================
 st.divider()
 if st.button("🪄 Render High-Fidelity Schematic", use_container_width=True, type="primary"):
-    with st.spinner("Processing Logic Paths..."):
-        st.session_state.rendered_img = generate_schematic(comp_map, net_list)
+    if comp_map:
+        with st.spinner("Processing Semantic Logic..."):
+            st.session_state.rendered_img = generate_schematic(comp_map, net_list)
+    else:
+        st.error("No valid components found in netlist.")
 
 if "rendered_img" in st.session_state:
     st.subheader("📐 Semantic Schematic Preview")
@@ -153,12 +143,11 @@ if "rendered_img" in st.session_state:
     with st.container(border=True):
         st.image(Image.open(st.session_state.rendered_img), use_container_width=True)
         
-        # Download and Refresh row
-        btn_col1, btn_col2, _ = st.columns([1, 1, 2])
-        with btn_col1:
+        c1, c2, _ = st.columns([1, 1, 2])
+        with c1:
             with open(st.session_state.rendered_img, "rb") as f:
-                st.download_button("💾 Save PNG", f, "PragyanAI_Schematic.png", "image/png", use_container_width=True)
-        with btn_col2:
-            if st.button("🔄 Redraw / Refresh", use_container_width=True):
+                st.download_button("💾 Download PNG", f, "PragyanAI_Schematic.png", "image/png", use_container_width=True)
+        with c2:
+            if st.button("🔄 Redraw / Refine", use_container_width=True):
                 st.session_state.pop("rendered_img")
                 st.rerun()
