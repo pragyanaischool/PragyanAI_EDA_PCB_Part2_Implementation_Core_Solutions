@@ -49,6 +49,7 @@ class ImplementationWorker:
         """
         console.print("[bold blue]PragyanAI Worker:[/bold blue] Starting Implementation Core...")
 
+        # 1. Load the data
         if not self.load_plan():
             return False
 
@@ -56,23 +57,24 @@ class ImplementationWorker:
 
         try:
             # --- PHASE 1: FOOTPRINT MAPPING ---
-            # Translates logical components to physical packages (e.g., ESP32 -> WROOM-32)
+            # Translates logical components to physical packages
             logger.info("Mapping logical components to footprints...")
             mapper = FootprintMapper()
+            # Explicit call to 'map' method fixed for previous AttributeError
             mapped_data = mapper.map(self.plan_data)
 
             # --- PHASE 2: SCHEMATIC SYNTHESIS (SKiDL) ---
-            # Builds the electrical connections in memory and exports a KiCad netlist
+            # Builds electrical connections and exports KiCad netlist
             logger.info("Synthesizing electrical netlist via SKiDL...")
             schematic_path = os.path.join(self.outputs_base, "netlists", f"{proj_name}.net")
             
+            # Note: SchematicGenerator handles internal wiring via pragyan_symbols
             gen = SchematicGenerator(project_name=proj_name)
-            # build_from_plan() performs the actual pin-to-pin wiring
             if gen.build_from_plan(self.plan_data, mapped_data):
                 gen.generate_netlist(schematic_path)
 
             # --- PHASE 3: PROCUREMENT BOM GENERATION ---
-            # Aggregates components and prepares a CSV for manufacturing
+            # Aggregates components and prepares CSV for manufacturing
             logger.info("Generating Procurement Bill of Materials (BOM)...")
             bom_path = os.path.join(self.outputs_base, "boms", f"{proj_name}_BOM.csv")
             
@@ -84,10 +86,11 @@ class ImplementationWorker:
 
         except Exception as e:
             logger.critical(f"Implementation failure: {str(e)}")
-            # Raise the exception so the Streamlit UI can catch and display the error
+            # Propagate the error so the Streamlit UI can show it to the user
             raise e
 
 # Self-test block for local debugging
 if __name__ == "__main__":
     worker = ImplementationWorker()
     worker.run()
+    
