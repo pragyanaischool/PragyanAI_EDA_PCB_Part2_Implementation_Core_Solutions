@@ -10,6 +10,7 @@ langchain-huggingface
 langgraph
 jsonschema
 skidl
+schemdraw
 Pillow
 sentence-transformers
 transformers
