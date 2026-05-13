@@ -47,33 +47,44 @@ comp_map, net_list = parse_netlist(netlist_path)
 def generate_schematic(components, nets):
     d = schemdraw.Drawing()
     
-    # Logic: Detect key components and place them
-    # Note: In a production AI, this would use a placement algorithm.
-    # For the demo, we focus on the core MCU/Power relationship.
-    
-    # 1. Place ESP32 if present
+    # 1. Place ESP32
     mcu_ref = next((ref for ref, val in components.items() if "ESP32" in val.upper()), None)
+    esp = None
     if mcu_ref:
         esp = d.add(elm.Ic(label=f"{mcu_ref}\n{components[mcu_ref]}", 
-                           pins=[elm.IcPin(name='3V3', side='left'), 
-                                 elm.IcPin(name='GND', side='left')]))
+                           pins=[
+                               elm.IcPin(name='3V3', side='left', slot='1/2'), 
+                               elm.IcPin(name='GND', side='left', slot='2/2')
+                           ]))
     
-    # 2. Place Regulator if present
+    # 2. Place Regulator
     reg_ref = next((ref for ref, val in components.items() if "1117" in val), None)
+    reg = None
     if reg_ref:
         d.move(dx=5)
         reg = d.add(elm.Ic(label=f"{reg_ref}\n{components[reg_ref]}",
-                           pins=[elm.IcPin(name='VIN', side='left'),
-                                 elm.IcPin(name='GND', side='bottom'),
-                                 elm.IcPin(name='VOUT', side='right')]))
+                           pins=[
+                               elm.IcPin(name='VIN', side='left'),
+                               elm.IcPin(name='GND', side='bottom'),
+                               elm.IcPin(name='VOUT', side='right')
+                           ]))
         
-        # 3. Automated Wiring (3V3 Rail)
-        if mcu_ref and reg_ref:
+    # 3. Automated Wiring with Error Checking
+    if esp and reg:
+        try:
+            # FIX: Use .absanchors if .pins fails, or ensure the key exists
+            d.add(elm.Line().at(esp.3V3).to(reg.VOUT)) 
+            
+            d.add(elm.Vline().at(esp.GND).length(1))
+            d.add(elm.Ground())
+            
+            d.add(elm.Vline().at(reg.GND).length(1))
+            d.add(elm.Ground())
+        except AttributeError:
+            # Fallback to dictionary access if attribute access fails
             d.add(elm.Line().at(esp.pins['3V3']).to(reg.pins['VOUT']))
-            d.add(elm.Vline().at(esp.pins['GND']).length(1))
-            d.add(elm.Ground())
-            d.add(elm.Vline().at(reg.pins['GND']).length(1))
-            d.add(elm.Ground())
+            d.add(elm.Ground().at(esp.pins['GND']))
+            d.add(elm.Ground().at(reg.pins['GND']))
 
     output_img = "outputs/reports/Schematic_Visual.png"
     d.save(output_img)
