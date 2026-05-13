@@ -47,7 +47,7 @@ bom_path = get_latest_file("outputs/boms", "csv")
 #  SECTION 1: DEEP ANALYTICS & EXPLAINER AGENT
 # =========================================================
 st.divider()
-st.header("🕵️ AI Design Audit & Deep Analytics")
+st.header(" AI Design Audit & Deep Analytics")
 
 if netlist_path and bom_path:
     with open(netlist_path, "r") as f:
@@ -57,7 +57,7 @@ if netlist_path and bom_path:
     col_analysis, col_explain = st.columns([1, 1])
 
     with col_analysis:
-        st.subheader("📋 Automated GAP Analysis")
+        st.subheader(" Automated GAP Analysis")
         # Logic Audit
         findings = []
         if "3V3" in net_content and "AMS1117" in net_content:
@@ -71,7 +71,7 @@ if netlist_path and bom_path:
             st.write(item)
 
     with col_explain:
-        st.subheader("💡 Component & Netlist Explainer")
+        st.subheader(" Component & Netlist Explainer")
         # Extract components for explanation
         comps = re.findall(r'\(comp \(ref (.*?)\).*?\(value (.*?)\)', net_content, re.DOTALL)
         
@@ -123,7 +123,7 @@ if report_files:
 #  SECTION 4: TRACEABILITY CHAT (INTERACTIVE)
 # =========================================================
 st.divider()
-st.header("💬 Interactive Design Traceability")
+st.header(" Interactive Design Traceability")
 if "chat_history" not in st.session_state: st.session_state.chat_history = []
 
 for msg in st.session_state.chat_history:
@@ -143,7 +143,7 @@ if prompt := st.chat_input("Ask why specific components were chosen..."):
         res = "This design decision is derived from the hardware constraints mapped in Phase 3."
     
     with st.chat_message("assistant"): st.markdown(res)
-    st.session_state.chat_history.append({"role": "assistant", "content": res})
+        st.session_state.chat_history.append({"role": "assistant", "content": res})
 
 # =========================================================
 #  SECTION 5: FINAL NAVIGATION (BRIDGE TO PHASE 5)
