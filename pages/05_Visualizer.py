@@ -5,6 +5,7 @@ import glob
 import schemdraw
 import schemdraw.elements as elm
 from PIL import Image
+import pandas as pd
 
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="PragyanAI Visualizer | Phase 5", page_icon="🎨", layout="wide")
