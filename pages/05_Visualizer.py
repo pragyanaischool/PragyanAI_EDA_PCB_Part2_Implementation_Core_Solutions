@@ -8,7 +8,7 @@ from PIL import Image
 
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="PragyanAI Visualizer | Phase 5", page_icon="🎨", layout="wide")
-
+st.image("PragyanAI_Transperent.png")
 st.title(" Phase 5: Automated Circuit Visualizer")
 st.markdown("This module parses raw KiCad S-Expressions and renders a functional schematic diagram.")
 
