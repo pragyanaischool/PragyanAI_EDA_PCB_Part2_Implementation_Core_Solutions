@@ -142,8 +142,9 @@ if prompt := st.chat_input("Ask why specific components were chosen..."):
     else:
         res = "This design decision is derived from the hardware constraints mapped in Phase 3."
     
-    with st.chat_message("assistant"): st.markdown(res)
-        st.session_state.chat_history.append({"role": "assistant", "content": res})
+    with st.chat_message("assistant"): 
+        st.markdown(res)
+    st.session_state.chat_history.append({"role": "assistant", "content": res})
 
 # =========================================================
 #  SECTION 5: FINAL NAVIGATION (BRIDGE TO PHASE 5)
