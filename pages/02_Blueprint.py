@@ -2,7 +2,7 @@ import streamlit as st
 import json
 from PIL import Image
 
-# --- 🎨 PAGE CONFIG ---
+# --- PAGE CONFIG ---
 st.set_page_config(
     page_title="PragyanAI Blueprint | Phase 2",
     page_icon="📋",
@@ -16,10 +16,11 @@ try:
 except FileNotFoundError:
     pass
 
+st.image("PragyanAI_Transperent.png")
 st.sidebar.title("Implementation Core")
 st.sidebar.info("Phase 2: Blueprint Analysis")
 
-# --- 🧠 DATA RETRIEVAL ---
+# --- DATA RETRIEVAL ---
 # Access the plan refined in Phase 1
 plan = st.session_state.get("arch_plan")
 project_title = st.session_state.get("project_title", "Unnamed Project")
@@ -33,7 +34,7 @@ if not plan:
 
 st.divider()
 
-# --- 🔌 INTERFACE CONNECTIVITY MAP ---
+# --- INTERFACE CONNECTIVITY MAP ---
 st.subheader(" Logical Interface Map")
 st.write("This map visualizes the communication protocols and bus assignments defined in your architecture.")
 
@@ -52,7 +53,7 @@ with col3:
 
 st.divider()
 
-# --- 📊 DETAILED COMPONENT BREAKDOWN ---
+# --- DETAILED COMPONENT BREAKDOWN ---
 tab1, tab2 = st.tabs([" Component List", " Signal Interference"])
 
 with tab1:
@@ -94,7 +95,7 @@ with tab2:
     else:
         st.info("No external communication protocols defined in the architecture JSON.")
 
-# --- 🚀 NEXT STEPS ---
+# --- NEXT STEPS ---
 st.divider()
 col_nav1, col_nav2 = st.columns([4, 1])
 
