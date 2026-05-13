@@ -87,6 +87,24 @@ with col_dl2:
     else:
         st.error("❌ BOM artifact missing. Run synthesis in Phase 3.")
 
+# --- RAW NETLIST INSPECTOR ---
+st.divider()
+st.subheader(" KiCad Netlist (S-Expression) Preview")
+
+if netlist_path and os.path.exists(netlist_path):
+    with st.expander("🔍 Click to view raw netlist content", expanded=False):
+        try:
+            with open(netlist_path, "r") as f:
+                netlist_content = f.read()
+            
+            # Use st.code with 'lisp' or 'scheme' formatting for S-expressions
+            st.code(netlist_content, language="scheme")
+            
+        except Exception as e:
+            st.error(f"Could not read netlist file: {e}")
+else:
+    st.info("Netlist file not found. Complete synthesis to view the raw netlist.")
+    
 # --- PROCUREMENT PREVIEW ---
 if bom_path and os.path.exists(bom_path):
     st.divider()
