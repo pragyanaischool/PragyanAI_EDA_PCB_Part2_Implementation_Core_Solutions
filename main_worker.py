@@ -49,7 +49,7 @@ class ImplementationWorker:
         """
         console.print("[bold blue]PragyanAI Worker:[/bold blue] Starting Implementation Core...")
 
-        # 1. Load the data
+        # 1. Load the data from the Phase 1 buffer
         if not self.load_plan():
             return False
 
@@ -57,10 +57,10 @@ class ImplementationWorker:
 
         try:
             # --- PHASE 1: FOOTPRINT MAPPING ---
-            # Translates logical components to physical packages
+            # Translates logical components to physical packages (U1, J1, etc.)
             logger.info("Mapping logical components to footprints...")
             mapper = FootprintMapper()
-            # Explicit call to 'map' method fixed for previous AttributeError
+            # Returns a LIST of components for the schematic engine
             mapped_data = mapper.map(self.plan_data)
 
             # --- PHASE 2: SCHEMATIC SYNTHESIS (SKiDL) ---
@@ -68,29 +68,32 @@ class ImplementationWorker:
             logger.info("Synthesizing electrical netlist via SKiDL...")
             schematic_path = os.path.join(self.outputs_base, "netlists", f"{proj_name}.net")
             
-            # Note: SchematicGenerator handles internal wiring via pragyan_symbols
             gen = SchematicGenerator(project_name=proj_name)
+            # Pass BOTH the plan (dict) and mapped_data (list) to avoid TypeErrors
             if gen.build_from_plan(self.plan_data, mapped_data):
                 gen.generate_netlist(schematic_path)
 
             # --- PHASE 3: PROCUREMENT BOM GENERATION ---
-            # Aggregates components and prepares CSV for manufacturing
+            # FIX: We pass self.plan_data (the Dict) instead of mapped_data (the List)
+            # This allows BOMManager to use .get('mcu') and .get('power_tree')
             logger.info("Generating Procurement Bill of Materials (BOM)...")
             bom_path = os.path.join(self.outputs_base, "boms", f"{proj_name}_BOM.csv")
             
             bom_mgr = BOMManager()
-            bom_mgr.generate(mapped_data, bom_path)
+            # Pass the full dictionary to satisfy the BOMManager requirements
+            bom_mgr.generate(self.plan_data, bom_path)
 
             console.print(f"[bold green]SUCCESS:[/bold green] Engineering artifacts for '{proj_name}' are ready.")
             return True
 
         except Exception as e:
             logger.critical(f"Implementation failure: {str(e)}")
-            # Propagate the error so the Streamlit UI can show it to the user
+            # Raise the exception so the Streamlit UI can display the error to the user
             raise e
 
 # Self-test block for local debugging
 if __name__ == "__main__":
     worker = ImplementationWorker()
     worker.run()
+    
     
