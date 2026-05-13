@@ -8,7 +8,11 @@ from PIL import Image
 import pandas as pd
 
 # --- 🎨 PAGE CONFIG ---
-st.set_page_config(page_title="PragyanAI Visualizer | Phase 5", page_icon="🎨", layout="wide")
+st.set_page_config(
+    page_title="PragyanAI Visualizer | Phase 5", 
+    page_icon="🎨", 
+    layout="wide"
+)
 
 # Sidebar Branding
 try:
@@ -19,72 +23,63 @@ except FileNotFoundError:
 
 st.image("PragyanAI_Transperent.png")
 st.title("🎨 Phase 5: Automated Circuit Visualizer")
+st.markdown("Translating Refined Engineering Logic into Manufacturing-Grade Schematics.")
 
-# --- 📂 ARTIFACT DISCOVERY ---
-def get_artifacts():
-    net_files = glob.glob("outputs/netlists/*.net")
-    bom_files = glob.glob("outputs/boms/*.csv")
-    if not net_files: return None, None
+# --- 📂 DATA DISCOVERY (BOM & NETLIST) ---
+def get_engineering_data():
+    # Targets the specific files uploaded
+    net_path = "Smart_Monitor_V1_f.net"
+    bom_path = "PragyanAI_Design_BOM_f.csv"
     
-    # Priority: Smart_Monitor_V1.net or Refined files
-    net = next((f for f in net_files if "Smart_Monitor" in f or "Refined" in f), max(net_files, key=os.path.getctime))
-    bom = next((f for f in bom_files if "Smart_Monitor" in f or "Refined" in f), max(bom_files, key=os.path.getctime))
-    return net, bom
+    # Fallback to glob if exact names aren't found in current directory
+    if not os.path.exists(net_path):
+        nets = glob.glob("*.net")
+        net_path = nets[0] if nets else None
+    if not os.path.exists(bom_path):
+        boms = glob.glob("*.csv")
+        bom_path = boms[0] if boms else None
+        
+    return net_path, bom_path
 
-netlist_path, bom_path = get_artifacts()
+netlist_path, bom_path = get_engineering_data()
 
 if not netlist_path:
-    st.warning("⚠️ No Netlist found. Please complete Phase 4 Audit first.")
+    st.error("⚠️ Engineering artifacts missing. Please ensure .net and .csv files are available.")
     st.stop()
 
 # --- 🧠 PARSING ENGINE ---
 def parse_netlist(path):
     with open(path, "r") as f:
         content = f.read()
+    
+    # Extract Components (Ref and Value)
     components = re.findall(r'\(comp \(ref (.*?)\).*?\(value (.*?)\)', content, re.DOTALL)
+    
+    # Extract Nets and Nodes
     nets_raw = re.findall(r'\(net \(code .*?\) \(name "(.*?)"\)(.*?)\)\)', content, re.DOTALL)
     parsed_nets = []
     for name, body in nets_raw:
         nodes = re.findall(r'\(node \(ref (.*?)\) \(pin (.*?)\)\)', body)
         parsed_nets.append({"net": name, "nodes": nodes})
+        
     return dict(components), parsed_nets
 
 comp_map, net_list = parse_netlist(netlist_path)
 
-# =========================================================
-# 📊 SECTION 1: ENGINEERING SOURCE ANALYTICS (NOW FIRST)
-# =========================================================
-st.divider()
-st.subheader("📊 Engineering Source Analytics")
-tab1, tab2 = st.tabs(["📜 Netlist Logic (KiCad)", "📦 BOM Items (Procurement)"])
-
-with tab1:
-    with open(netlist_path, "r") as f:
-        st.code(f.read(), language="scheme")
-with tab2:
-    if bom_path:
-        st.dataframe(pd.read_csv(bom_path), use_container_width=True, hide_index=True)
-
-# =========================================================
-# 📋 SECTION 2: REFINED ENGINEERING DATA
-# =========================================================
-st.divider()
-st.subheader("📋 Refined Engineering Data")
-st.info(f"**Analyzing Refined Logic:** {os.path.basename(netlist_path)}")
-
-# Display Component Map
-st.dataframe(pd.DataFrame(comp_map.items(), columns=["Designator", "Part Specification"]), 
-             use_container_width=True, hide_index=True)
-
 # --- 🖌️ SCHEMATIC GENERATION ENGINE ---
 def generate_schematic(components, nets):
-    """Draws the schematic with explicit pin mapping to prevent KeyError."""
+    """
+    Draws the schematic by interpreting the netlist connectivity logic.
+    Uses explicit pin naming to prevent KeyError.
+    """
     d = schemdraw.Drawing()
     
+    # 1. Component Discovery from Netlist
     mcu_ref = next((ref for ref, val in components.items() if "ESP32" in val.upper()), "U1")
     reg_ref = next((ref for ref, val in components.items() if "1117" in val or "3.3V" in val), "U2")
     
-    # FIX: Explicitly define IcPin names to populate the .pins dictionary
+    # 2. Voltage Regulator (U2) - Input Stage
+    # Define pins explicitly in a list to enable dictionary access u2.pins['VIN']
     reg = d.add(elm.Ic(
         label=f"{reg_ref}\n{components.get(reg_ref, 'AMS1117')}",
         pins=[
@@ -94,12 +89,13 @@ def generate_schematic(components, nets):
         ]
     ))
     
-    # Accessing pins via dictionary keys now works because names were provided above
+    # Draw Power In
     d.add(elm.Line().at(reg.pins['VIN']).left().length(1))
     d.add(elm.Dot().label("VCC_IN (5V)", loc='left'))
     d.add(elm.Line().at(reg.pins['GND']).down().length(0.5))
     d.add(elm.Ground())
 
+    # 3. Main Controller (U1) - ESP32 Stage
     d.move(dx=5)
     mcu = d.add(elm.Ic(
         label=f"{mcu_ref}\n{components.get(mcu_ref, 'ESP32-S3')}",
@@ -111,15 +107,17 @@ def generate_schematic(components, nets):
         ]
     ).anchor('3V3'))
 
-    # Logical Wiring from Netlist
+    # 4. LOGICAL WIRING (Connecting per Netlist)
+    # Check if Netlist confirms a '3V3' rail between Reg and MCU
     pwr_net = next((n for n in nets if n['net'].upper() == "3V3"), None)
-    if pwr_net and any(node[0] == reg_ref for node in pwr_net['nodes']):
+    if pwr_net:
+        # Dictionary-style access prevents SyntaxError and KeyError
         d.add(elm.Line().at(reg.pins['VOUT']).to(mcu.pins['3V3']).color('red').label("3.3V Rail"))
     
     d.add(elm.Line().at(mcu.pins['GND']).down().length(0.5))
     d.add(elm.Ground())
 
-    # Export
+    # 5. Export Logic
     out_dir = "outputs/reports"
     os.makedirs(out_dir, exist_ok=True)
     img_path = os.path.join(out_dir, "Schematic_Visual.png")
@@ -127,24 +125,46 @@ def generate_schematic(components, nets):
     return img_path
 
 # =========================================================
-# 📐 SECTION 3: VISUALIZATION & ACTIONS
+# 🏗️ UI LAYOUT
 # =========================================================
+
+# --- SECTION 1: ENGINEERING SOURCE ANALYTICS ---
 st.divider()
-if st.button("🪄 Render/Refine Schematic", use_container_width=True, type="primary"):
-    with st.spinner("Executing Semantic Drawing..."):
+st.subheader("📊 Engineering Source Analytics")
+tab1, tab2 = st.tabs(["📜 Netlist Logic (KiCad)", "📦 BOM Items (Procurement)"])
+
+with tab1:
+    st.code(open(netlist_path).read(), language="scheme")
+with tab2:
+    if bom_path:
+        df_bom = pd.read_csv(bom_path)
+        st.dataframe(df_bom, use_container_width=True, hide_index=True)
+
+# --- SECTION 2: REFINED ENGINEERING DATA ---
+st.divider()
+st.subheader("📋 Refined Engineering Data")
+st.info(f"**Analyzing Refined Logic:** {os.path.basename(netlist_path)}")
+st.dataframe(pd.DataFrame(comp_map.items(), columns=["Designator", "Part Value"]), 
+             use_container_width=True, hide_index=True)
+
+# --- SECTION 3: VISUALIZATION & ACTIONS ---
+st.divider()
+if st.button("🪄 Render High-Fidelity Schematic", use_container_width=True, type="primary"):
+    with st.spinner("Processing S-Expressions..."):
         st.session_state.rendered_img = generate_schematic(comp_map, net_list)
 
 if "rendered_img" in st.session_state:
     st.subheader("📐 Semantic Schematic Preview")
+    
     with st.container(border=True):
         st.image(Image.open(st.session_state.rendered_img), use_container_width=True)
         
-        # Action Row
         col1, col2, _ = st.columns([1, 1, 2])
         with col1:
             with open(st.session_state.rendered_img, "rb") as f:
-                st.download_button("💾 Download PNG", f, "PragyanAI_Schematic.png", "image/png", use_container_width=True)
+                st.download_button("💾 Save PNG", f, "PragyanAI_Schematic.png", "image/png", use_container_width=True)
         with col2:
             if st.button("🔄 Redraw / Refine", use_container_width=True):
                 st.session_state.pop("rendered_img")
                 st.rerun()
+                
