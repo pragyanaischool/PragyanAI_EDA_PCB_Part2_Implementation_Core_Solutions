@@ -4,6 +4,7 @@ import time
 import json
 from PIL import Image
 from main_worker import ImplementationWorker
+from core_engine.footprint_mapper import FootprintMapper
 
 # --- PAGE CONFIG ---
 st.set_page_config(
