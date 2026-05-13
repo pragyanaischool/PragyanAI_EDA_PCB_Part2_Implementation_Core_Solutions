@@ -19,18 +19,19 @@ except FileNotFoundError:
 
 st.image("PragyanAI_Transperent.png")
 st.title("🎨 Phase 5: Automated Circuit Visualizer")
-st.markdown("Translating Refined Engineering Logic into Manufacturing-Grade Schematics.")
 
 # --- 📂 REFINED FILE DISCOVERY ---
 def get_refined_artifacts():
-    """Prioritizes 'Refined' artifacts from Phase 4 Audit."""
     net_files = glob.glob("outputs/netlists/*.net")
-    if not net_files: return None
-    # Prioritize files with 'Refined' or 'V1' in the name
-    target = next((f for f in net_files if "Smart_Monitor" in f or "Refined" in f), max(net_files, key=os.path.getctime))
-    return target
+    bom_files = glob.glob("outputs/boms/*.csv")
+    if not net_files: return None, None
+    
+    # Priority: Files with 'Refined' in name, else latest
+    net = next((f for f in net_files if "Refined" in f), max(net_files, key=os.path.getctime))
+    bom = next((f for f in bom_files if "Refined" in f), max(bom_files, key=os.path.getctime))
+    return net, bom
 
-netlist_path = get_refined_artifacts()
+netlist_path, bom_path = get_refined_artifacts()
 
 if not netlist_path:
     st.warning("⚠️ No Netlist found. Please complete Phase 4 Audit first.")
@@ -40,93 +41,101 @@ if not netlist_path:
 def parse_netlist(path):
     with open(path, "r") as f:
         content = f.read()
-    # Extract Components and Nets
+    # Extract Components: (Ref, Value)
     components = re.findall(r'\(comp \(ref (.*?)\).*?\(value (.*?)\)', content, re.DOTALL)
-    return dict(components)
+    # Extract Nets: (Name, List of Nodes)
+    nets_raw = re.findall(r'\(net \(code .*?\) \(name "(.*?)"\)(.*?)\)\)', content, re.DOTALL)
+    parsed_nets = []
+    for name, body in nets_raw:
+        nodes = re.findall(r'\(node \(ref (.*?)\) \(pin (.*?)\)\)', body)
+        parsed_nets.append({"net": name, "nodes": nodes})
+    return dict(components), parsed_nets
 
-comp_map = parse_netlist(netlist_path)
+comp_map, net_list = parse_netlist(netlist_path)
 
-# --- 🖌️ SCHEMATIC GENERATION ---
-def generate_schematic(components):
+# --- 🖌️ LOGIC-DRIVEN SCHEMATIC GENERATION ---
+def generate_schematic(components, nets):
+    """
+    Draws the schematic by interpreting the netlist connectivity logic.
+    """
     d = schemdraw.Drawing()
     
-    # Discovery
+    # 1. Component Role Identification
     mcu_ref = next((ref for ref, val in components.items() if "ESP32" in val.upper()), "U1")
     reg_ref = next((ref for ref, val in components.items() if "1117" in val or "3.3V" in val), "U2")
     
-    # 1. Power Entry
-    vin = d.add(elm.Dot().label("VCC_IN (5V)", loc='left'))
-    
-    # 2. Voltage Regulator (AMS1117-3.3)
-    reg = d.add(elm.Ic(
-        label=f"{reg_ref}\n{components.get(reg_ref, 'AMS1117')}",
+    # 2. Draw Voltage Regulator (U2)
+    # Based on Netlist Logic: VIN is usually where power enters
+    u2 = d.add(elm.Ic(
+        label=f"{reg_ref}\n{components.get(reg_ref, 'Regulator')}",
         pins=[elm.IcPin(name='VIN', side='left'), 
               elm.IcPin(name='GND', side='bottom'), 
               elm.IcPin(name='VOUT', side='right')]
-    ).at(vin.center))
-    
-    d.add(elm.Line().at(reg.GND).down().length(0.5))
+    ))
+    d.add(elm.Line().at(u2.VIN).left().length(1).label("VCC_IN", loc='left'))
+    d.add(elm.Line().at(u2.GND).down().length(0.5))
     d.add(elm.Ground())
 
-    # 3. Decoupling Section (Refined Link)
-    d.add(elm.Line().at(reg.VOUT).right().length(1))
-    d.add(elm.Capacitor(label='C1\n10uF').down())
-    d.add(elm.Ground())
+    # 3. Intelligent Wiring from Netlist
+    # Search the netlist for the "3V3" net to see what it connects
+    pwr_net = next((n for n in nets if n['net'].upper() == "3V3"), None)
     
-    # 4. MCU (ESP32-S3)
-    d.add(elm.Line().at(reg.VOUT).right().length(3))
-    mcu = d.add(elm.Ic(
-        label=f"{mcu_ref}\n{components.get(mcu_ref, 'ESP32-S3')}",
+    # 4. Draw MCU (U1)
+    d.move(dx=5) # Space out from regulator
+    u1 = d.add(elm.Ic(
+        label=f"{mcu_ref}\n{components.get(mcu_ref, 'MCU')}",
         pins=[elm.IcPin(name='3V3', side='left', slot='1/4'),
               elm.IcPin(name='GND', side='left', slot='4/4'),
-              elm.IcPin(name='SDA', side='right', slot='1/4'),
-              elm.IcPin(name='SCL', side='right', slot='2/4')]
+              elm.IcPin(name='IO8', side='right'),
+              elm.IcPin(name='IO9', side='right')]
     ).anchor('3V3'))
 
-    d.add(elm.Line().at(mcu.GND).down().length(0.5))
+    # If the netlist confirms U2-VOUT and U1-3V3 are on the same net, draw the line
+    if pwr_net and any(node[0] == reg_ref for node in pwr_net['nodes']):
+        d.add(elm.Line().at(u2.VOUT).to(u1.3V3).color('red').label("3.3V Rail"))
+    
+    d.add(elm.Line().at(u1.GND).down().length(0.5))
     d.add(elm.Ground())
 
-    # Save Output
-    out_path = "outputs/reports/Schematic_Visual.png"
-    os.makedirs("outputs/reports", exist_ok=True)
-    d.save(out_path)
-    return out_path
+    # 5. Export
+    out_dir = "outputs/reports"
+    os.makedirs(out_dir, exist_ok=True)
+    img_path = os.path.join(out_dir, "Schematic_Visual.png")
+    d.save(img_path)
+    return img_path
 
-# =========================================================
-# 🏗️ UI DISPLAY (ONE BELOW OTHER)
-# =========================================================
-
-st.divider()
+# --- UI LAYOUT ---
 st.subheader("📋 Refined Engineering Data")
-st.info(f"**Linked Artifact:** {os.path.basename(netlist_path)}")
+col_info, col_btn = st.columns([3, 1])
+with col_info:
+    st.info(f"**Analyzing:** {os.path.basename(netlist_path)}")
+with col_btn:
+    if st.button("🪄 Render Schematic", use_container_width=True, type="primary"):
+        st.session_state.img_path = generate_schematic(comp_map, net_list)
 
-# Display Table First
-st.dataframe(
-    pd.DataFrame(comp_map.items(), columns=["Designator", "Part Specification"]),
-    use_container_width=True,
-    hide_index=True
-)
+# Display Component Map
+st.dataframe(pd.DataFrame(comp_map.items(), columns=["Designator", "Specification"]), 
+             use_container_width=True, hide_index=True)
 
-st.divider()
-if st.button("🪄 Render High-Fidelity Schematic", use_container_width=True, type="primary"):
-    with st.spinner("Generating Semantic Diagram..."):
-        img_file = generate_schematic(comp_map)
-        st.session_state.schematic_ready = True
-
-# Display Image Second
-if st.session_state.get("schematic_ready"):
+# Display Generated Schematic
+if "img_path" in st.session_state:
+    st.divider()
     st.subheader("📐 Semantic Schematic Preview")
-    img_path = "outputs/reports/Schematic_Visual.png"
-    
     with st.container(border=True):
-        st.image(Image.open(img_path), use_container_width=True)
+        st.image(Image.open(st.session_state.img_path), use_container_width=True)
         
-        # Action Row
-        col_s1, col_s2, _ = st.columns([1, 1, 2])
-        with col_s1:
-            with open(img_path, "rb") as f:
-                st.download_button("💾 Save PNG", f, "PragyanAI_Schematic.png", "image/png")
-        with col_s2:
-            if st.button("🔄 Clear & Re-run"):
-                st.session_state.schematic_ready = False
-                st.rerun()
+        # Download
+        with open(st.session_state.img_path, "rb") as f:
+            st.download_button("💾 Download Schematic PNG", f, "PragyanAI_Design.png", "image/png")
+
+# --- FILE ANALYTICS ---
+st.divider()
+st.subheader("📊 Data Source Analytics")
+t1, t2 = st.tabs(["📜 Netlist Logic", "📦 BOM Items"])
+with t1:
+    with open(netlist_path, "r") as f:
+        st.code(f.read(), language="scheme")
+with t2:
+    if bom_path:
+        st.dataframe(pd.read_csv(bom_path), use_container_width=True)
+        
