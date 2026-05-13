@@ -7,7 +7,7 @@ import schemdraw.elements as elm
 from PIL import Image
 import pandas as pd
 
-# --- PAGE CONFIG ---
+# --- 🎨 PAGE CONFIG ---
 st.set_page_config(
     page_title="PragyanAI Visualizer | Phase 5", 
     page_icon="🎨", 
@@ -89,14 +89,15 @@ def generate_schematic(components, nets):
             pins=[
                 elm.IcPin(name='VIN', side='left'),
                 elm.IcPin(name='GND', side='bottom'),
-                elm.IcPin(name='VOUT', side='left')
+                elm.IcPin(name='VOUT', side='left') # Flipped to face MCU
             ]
         ))
         
     # 3. WIRING & CONNECTIONS
     if esp and reg:
         try:
-            # Connect 3.3V Rail
+            # Wire 3.3V Rail (Red and Labeled)
+            # Safe syntax to avoid attribute KeyError: esp.pins['3V3']
             d.add(elm.Line().at(esp.pins['3V3']).to(reg.pins['VOUT']).color('red').label("3.3V Rail"))
             
             # Connect MCU Ground
@@ -107,12 +108,14 @@ def generate_schematic(components, nets):
             d.add(elm.Line().at(reg.pins['GND']).down().length(0.5))
             d.add(elm.Ground())
             
-            # Add Input Power Dot
+            # Add Input Power dot
             d.add(elm.Line().at(reg.pins['VIN']).left().length(1))
             d.add(elm.Dot().label("VCC_IN (5V)", loc='left'))
 
+        except KeyError as e:
+            st.error(f"Wiring KeyError: Missing pin {e} in dictionary mapping.")
         except Exception as e:
-            st.error(f"Mapping Error: {e}")
+            st.error(f"Drawing Error: {e}")
 
     # 4. EXPORT
     output_dir = "outputs/reports"
@@ -127,20 +130,20 @@ def generate_schematic(components, nets):
 col_data, col_viz = st.columns([1, 2])
 
 with col_data:
-    st.subheader("Parsed Engineering Data")
+    st.subheader("📋 Parsed Engineering Data")
     st.write("**Identified Components:**")
     st.dataframe(pd.DataFrame(comp_map.items(), columns=["Designator", "Part Value"]), hide_index=True)
     
-    if st.button("Re-Generate Schematic", use_container_width=True):
+    if st.button("🪄 Re-Generate Schematic", use_container_width=True):
         with st.spinner("Rendering Engineering Diagram..."):
             img_path = generate_schematic(comp_map, net_list)
             st.success("Schematic Refreshed!")
 
 with col_viz:
-    st.subheader("System Schematic Preview")
+    st.subheader("📐 System Schematic Preview")
     img_path = "outputs/reports/Schematic_Visual.png"
     
-    # Render Frame
+    # Render Frame for professional output
     with st.container(border=True):
         if os.path.exists(img_path):
             st.image(Image.open(img_path), use_container_width=True)
@@ -150,17 +153,17 @@ with col_viz:
             with btn_col1:
                 with open(img_path, "rb") as f:
                     st.download_button(
-                        label="Download PNG",
+                        label="💾 Download PNG",
                         data=f,
                         file_name="PragyanAI_Schematic.png",
                         mime="image/png",
                         use_container_width=True
                     )
             with btn_col2:
-                if st.button("Fullscreen Refresh", use_container_width=True):
+                if st.button("🔍 Fullscreen Refresh", use_container_width=True):
                     st.rerun()
         else:
-            st.info("Schematic ready. Click 'Re-Generate' to visualize the design logic.")
+            st.info("💡 Schematic ready. Click 'Re-Generate' above to visualize the design logic.")
 
 # --- RAW NETLIST VIEW ---
 with st.expander("View Raw Netlist (S-Expression)"):
