@@ -84,7 +84,7 @@ def generate_schematic(components, nets):
     mcu_ref = next((ref for ref, val in components.items() if "ESP32" in val.upper()), "U1")
     reg_ref = next((ref for ref, val in components.items() if "1117" in val or "3.3V" in val), "U2")
     
-    # Define Regulator with explicit Pin Names to populate d.pins
+    # FIX: Explicitly define IcPin names to populate the .pins dictionary
     reg = d.add(elm.Ic(
         label=f"{reg_ref}\n{components.get(reg_ref, 'AMS1117')}",
         pins=[
@@ -94,13 +94,12 @@ def generate_schematic(components, nets):
         ]
     ))
     
-    # Power Wiring
+    # Accessing pins via dictionary keys now works because names were provided above
     d.add(elm.Line().at(reg.pins['VIN']).left().length(1))
     d.add(elm.Dot().label("VCC_IN (5V)", loc='left'))
     d.add(elm.Line().at(reg.pins['GND']).down().length(0.5))
     d.add(elm.Ground())
 
-    # Define MCU with explicit Pin Names
     d.move(dx=5)
     mcu = d.add(elm.Ic(
         label=f"{mcu_ref}\n{components.get(mcu_ref, 'ESP32-S3')}",
@@ -112,7 +111,7 @@ def generate_schematic(components, nets):
         ]
     ).anchor('3V3'))
 
-    # Logical Wiring: Connect if Netlist confirms '3V3' rail
+    # Logical Wiring from Netlist
     pwr_net = next((n for n in nets if n['net'].upper() == "3V3"), None)
     if pwr_net and any(node[0] == reg_ref for node in pwr_net['nodes']):
         d.add(elm.Line().at(reg.pins['VOUT']).to(mcu.pins['3V3']).color('red').label("3.3V Rail"))
