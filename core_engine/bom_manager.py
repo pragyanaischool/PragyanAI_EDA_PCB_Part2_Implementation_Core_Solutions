@@ -10,14 +10,25 @@ class BOMManager:
     def __init__(self, output_dir="outputs/boms/"):
         """
         Initializes the BOM Manager.
-        
-        Args:
-            output_dir: Directory where the generated CSVs will be saved.
         """
         self.output_dir = output_dir
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
 
+    # =========================================================
+    # FIX: ORCHESTRATOR WRAPPER
+    # =========================================================
+    def generate(self, plan, filename=None):
+        """
+        This method acts as the entry point for main_worker.py.
+        It redirects the call to the existing export_bom logic.
+        """
+        logger.info("Redirecting 'generate' call to 'export_bom'...")
+        return self.export_bom(plan, filename)
+
+    # =========================================================
+    # EXISTING LOGIC (Full & Unchanged)
+    # =========================================================
     def export_bom(self, plan, filename=None):
         """
         Compiles the Bill of Materials from the enriched architecture plan.
@@ -61,8 +72,6 @@ class BOMManager:
             })
 
         # 3. Process Passives / Standard Support Parts
-        # Logic: We add common passives required by our pragyan_symbols macros
-        # In a full-scale system, these would be tracked via the SKiDL circuit object
         passives = [
             {"Designator": "C1, C2", "Qty": 2, "Val": "10uF", "MPN": "CL21A106KAYNNNE", "Foot": "0603", "Desc": "Decoupling Cap"},
             {"Designator": "R1, R2", "Qty": 2, "Val": "4.7k", "MPN": "RC0603FR-074K7L", "Foot": "0603", "Desc": "I2C Pull-ups"}
@@ -92,7 +101,6 @@ class BOMManager:
             raise e
 
 if __name__ == "__main__":
-    # Test execution
     manager = BOMManager()
     sample_mapped_plan = {
         "project_name": "SmartGate_V1",
@@ -106,4 +114,5 @@ if __name__ == "__main__":
             {"component": "LDO", "output_v": 3.3, "mpn": "AMS1117-3.3", "footprint": "SOT-223"}
         ]
     }
-    manager.export_bom(sample_mapped_plan)
+    manager.generate(sample_mapped_plan)
+    
