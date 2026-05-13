@@ -37,6 +37,7 @@ st.sidebar.info("**Phase 1: Architecture & RAG Critic**")
 st.sidebar.write("Establish the logical foundation and validate via AI Reviewer.")
 
 # --- 5. MAIN UI HEADER ---
+st.image("PragyanAI_Transperent.png")
 st.title("Phase 1: AI Architect & Critic")
 st.markdown("""
 Welcome to the **PragyanAI Implementation Core**. This phase facilitates the **Human-in-the-Loop** 
