@@ -261,7 +261,7 @@ elif app_mode == "Phase 2: PCB EDA & Defect Prediction":
     if os.path.exists("PragyanAI_Transperent.png"):
         st.image("PragyanAI_Transperent.png")
         
-    st.title("🔬 PCB Inspection & Defect Risk Analytics")
+    st.title(" PCB Inspection & Defect Risk Analytics")
     st.markdown("Automated exploratory telemetry analysis and predictive defect assessment.")
     st.divider()
 
@@ -278,7 +278,7 @@ elif app_mode == "Phase 2: PCB EDA & Defect Prediction":
     m_col4.metric("Mean Reflow Temp", f"{avg_temp:.1f} °C")
 
     # Tabbed View
-    tab1, tab2, tab3 = st.tabs(["📊 Interactive EDA", "🤖 Model Diagnostic", "⚡ Live Defect Predictor"])
+    tab1, tab2, tab3 = st.tabs([" Interactive EDA", " Model Diagnostic", " Live Defect Predictor"])
 
     # --- TAB 1: EDA ---
     with tab1:
