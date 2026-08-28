@@ -1,0 +1,98 @@
+{
+    "project_name": "Smart AgTech Sensor Hub V2",
+    "version": "1.2.0",
+    "author": "PragyanAI System Architect",
+    "description": "Multi-sensor telemetry & environmental monitoring hub with wireless connectivity and edge inference capabilities.",
+    "mcu": {
+        "family": "ESP32-S3",
+        "part_number": "ESP32-S3-WROOM-1-N16R8",
+        "core": "Dual-Core Xtensa LX7 @ 240MHz",
+        "flash_mb": 16,
+        "psram_mb": 8,
+        "operating_voltage": "3.3V"
+    },
+    "power_system": {
+        "input_voltage_range": "4.5V - 12V DC",
+        "ldo_regulator": "TPS7A0533PDBVR",
+        "nominal_output": "3.3V @ 500mA",
+        "decoupling_capacitors": {
+            "input_cin": "10uF Ceramic 16V",
+            "output_cout": "22uF Ceramic 6.3V"
+        },
+        "protection": {
+            "reverse_polarity_diode": "SS14 Schottky",
+            "tvs_diode": "SMAJ5.0A"
+        }
+    },
+    "communication_buses": [
+        {
+            "bus_type": "I2C",
+            "bus_id": "I2C_0",
+            "clock_speed_khz": 400,
+            "sda_pin": "GPIO_4",
+            "scl_pin": "GPIO_5",
+            "pullup_resistors": "4.7k\u03a9 (mapped to 3.3V)",
+            "connected_devices": [
+                {
+                    "device": "BME688",
+                    "type": "Environmental Sensor (Gas, Temp, Humidity, Pressure)",
+                    "i2c_address": "0x76"
+                },
+                {
+                    "device": "OPT3001",
+                    "type": "Ambient Light Sensor",
+                    "i2c_address": "0x44"
+                }
+            ]
+        },
+        {
+            "bus_type": "SPI",
+            "bus_id": "SPI_2",
+            "clock_speed_mhz": 20,
+            "mosi_pin": "GPIO_11",
+            "miso_pin": "GPIO_13",
+            "sclk_pin": "GPIO_12",
+            "cs_pin": "GPIO_10",
+            "connected_devices": [
+                {
+                    "device": "MicroSD Slot",
+                    "type": "Local Telemetry Logging"
+                }
+            ]
+        },
+        {
+            "bus_type": "UART",
+            "bus_id": "UART_1",
+            "baud_rate": 115200,
+            "tx_pin": "GPIO_43",
+            "rx_pin": "GPIO_44",
+            "connected_devices": [
+                {
+                    "device": "Quectel BG95-M3",
+                    "type": "LTE-M / NB-IoT / GNSS Cellular Modem"
+                }
+            ]
+        }
+    ],
+    "pcb_constraints": {
+        "board_layers": 4,
+        "stackup": "SIG-GND-PWR-SIG",
+        "dimensions_mm": {
+            "width": 65.0,
+            "height": 45.0
+        },
+        "min_trace_width_mil": 6.0,
+        "min_trace_clearance_mil": 6.0,
+        "impedance_control": {
+            "rf_antenna_trace_ohm": 50,
+            "usb_differential_pair_ohm": 90
+        }
+    },
+    "manufacturing_tolerances": {
+        "target_solder_paste_thickness_um": 125.0,
+        "peak_reflow_temp_c": 245.0,
+        "conveyor_speed_cm_min": 65.0,
+        "pad_clearance_mm": 0.22,
+        "inspection_standard": "IPC-A-610 Class 2"
+    }
+}
