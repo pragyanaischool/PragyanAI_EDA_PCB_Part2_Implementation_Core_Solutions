@@ -8,7 +8,7 @@ from PIL import Image
 import pandas as pd
 
 # =========================================================
-# 🎨 PAGE CONFIG
+#  PAGE CONFIG
 # =========================================================
 st.set_page_config(
     page_title="PragyanAI Visualizer | Phase 5",
@@ -17,15 +17,15 @@ st.set_page_config(
 )
 
 # =========================================================
-# 🖼️ HEADER
+#  HEADER
 # =========================================================
 if os.path.exists("PragyanAI_Transperent.png"):
     st.image("PragyanAI_Transperent.png", width=300)
 
-st.title("🎨 Phase 5: Automated Circuit Visualizer")
+st.title(" Phase 5: Automated Circuit Visualizer")
 
 # =========================================================
-# 📂 ARTIFACT DISCOVERY
+#  ARTIFACT DISCOVERY
 # =========================================================
 def get_artifacts():
 
@@ -65,7 +65,7 @@ if not netlist_path:
     st.stop()
 
 # =========================================================
-# 🧠 NETLIST PARSER
+#  NETLIST PARSER
 # =========================================================
 def parse_netlist(path):
 
@@ -104,15 +104,15 @@ def parse_netlist(path):
 comp_map, net_list = parse_netlist(netlist_path)
 
 # =========================================================
-# 📊 ENGINEERING ANALYTICS
+#  ENGINEERING ANALYTICS
 # =========================================================
 st.divider()
-st.subheader("📊 Engineering Source Analytics")
+st.subheader(" Engineering Source Analytics")
 
 tab1, tab2 = st.tabs(
     [
-        "📜 Netlist Logic (KiCad)",
-        "📦 BOM Items (Procurement)"
+        " Netlist Logic (KiCad)",
+        " BOM Items (Procurement)"
     ]
 )
 
@@ -144,10 +144,10 @@ with tab2:
             st.error(f"Unable to load BOM: {e}")
 
 # =========================================================
-# 📋 COMPONENT OVERVIEW
+#  COMPONENT OVERVIEW
 # =========================================================
 st.divider()
-st.subheader("📋 Refined Engineering Data")
+st.subheader(" Refined Engineering Data")
 
 st.info(
     f"Analyzing Refined Logic: "
@@ -171,7 +171,7 @@ if comp_map:
     )
 
 # =========================================================
-# 🔧 PIN VALIDATION UTILITY
+#  PIN VALIDATION UTILITY
 # =========================================================
 def validate_pin(component, pin_name):
 
@@ -183,7 +183,7 @@ def validate_pin(component, pin_name):
         )
 
 # =========================================================
-# 🔎 SAFE PIN FINDER
+#  SAFE PIN FINDER
 # =========================================================
 def find_pin(component, aliases):
 
@@ -198,7 +198,7 @@ def find_pin(component, aliases):
     )
 
 # =========================================================
-# 🖌️ SCHEMATIC GENERATION ENGINE
+#  SCHEMATIC GENERATION ENGINE
 # =========================================================
 def generate_schematic(components, nets):
 
@@ -345,7 +345,7 @@ def generate_schematic(components, nets):
 
     return img_path
 # =========================================================
-# 📐 VISUALIZATION SECTION
+#  VISUALIZATION SECTION
 # =========================================================
 st.divider()
 
@@ -371,11 +371,11 @@ if st.button(
         st.error(f"❌ Render Error: {e}")
 
 # =========================================================
-# 🖼️ DISPLAY RENDERED SCHEMATIC
+#  DISPLAY RENDERED SCHEMATIC
 # =========================================================
 if "rendered_img" in st.session_state:
 
-    st.subheader("📐 Semantic Schematic Preview")
+    st.subheader(" Semantic Schematic Preview")
 
     with st.container(border=True):
 
@@ -397,7 +397,7 @@ if "rendered_img" in st.session_state:
             ) as f:
 
                 st.download_button(
-                    "💾 Download PNG",
+                    " Download PNG",
                     f,
                     "PragyanAI_Schematic.png",
                     "image/png",
@@ -407,7 +407,7 @@ if "rendered_img" in st.session_state:
         with col2:
 
             if st.button(
-                "🔄 Redraw / Refresh",
+                " Redraw / Refresh",
                 use_container_width=True
             ):
 
